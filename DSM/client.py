@@ -11,10 +11,8 @@ class Client:
 
     DEFAULT_EXECUTION_TIME = 1000 #seconds
     HEARBEAT_INTERVAL = 5 #seconds
-    LOCAL_IP = '192.168.4.105'
-    BROADCAST_IP = '10.0.1.255'
-    ALL_IP = '0.0.0.0'
-    UNICAST_PORT = 12341
+    LOCAL_IP = '10.0.0.4'
+    BROADCAST_IP = ''
 
     def __init__(self):
         self.unicast_socket=socket(AF_INET, SOCK_DGRAM)
@@ -22,9 +20,9 @@ class Client:
         self.unicast_socket.bind((self.LOCAL_IP, Acquisition.UNICAST_PORT))
 
         self.broadcast_socket=socket(AF_INET, SOCK_DGRAM)
-        self.broadcast_socket.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
-        self.broadcast_socket.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
-        self.broadcast_socket.bind((self.LOCAL_IP, int(Awareness.BROADCAST_PORT)))
+        #self.broadcast_socket.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
+        #self.broadcast_socket.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
+        self.broadcast_socket.bind((self.BROADCAST_IP, int(Awareness.BROADCAST_PORT)))
 
     def start(self):
         print 'Starting Client Emulator'
@@ -38,7 +36,7 @@ class Client:
         self.hrtb_t.join()
 
     def __awareness(self):
-        print 'Domain Unicast Receiver Started'
+        print 'Client Broadcast Receiver Started'
         t = threading.currentThread()
         while getattr(t, "do_run", True):
             data, rcvr = self.broadcast_socket.recvfrom(1024)
@@ -55,9 +53,9 @@ class Client:
     def identification(self, server_ip):
         print 'HI received'
         if not self.server_discovered:
-            print 'Client Sending Identification'
-            FUNCTION_URL = 'https://github.com/mgarriga/example-lambda'
-            self.unicast_socket.sendto(FUNCTION_URL,(server_ip, int(Awareness.BROADCAST_PORT)))
+            print 'Client Sending Identification ', server_ip
+            FUNCTION_URL = 'https://github.com/mgarriga/example-lambda;example-lambda'
+            self.unicast_socket.sendto(FUNCTION_URL,(server_ip, int(Acquisition.UNICAST_PORT)))
             self.server_discovered = True
 
     def confirmation(self, service_name):
