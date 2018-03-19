@@ -3,7 +3,7 @@ import time
 from awareness import Awareness
 from acquisition import Acquisition
 
-DEFAULT_EXECUTION_TIME = 10 #seconds
+DEFAULT_EXECUTION_TIME = 1000 #seconds
 HEARBEAT_INTERVAL = 5 #seconds
 BROADCAST_IP = '10.0.1.255'
 BROADCAST_PORT = 12340
@@ -16,7 +16,7 @@ def main():
     acquisition.start()
     time.sleep(DEFAULT_EXECUTION_TIME)
     awareness.stop()
-    acquisition.stop()    
+    acquisition.stop()
 
 if __name__ == "__main__":
     main()
