@@ -29,10 +29,12 @@ class Acquisition:
     def start(self):
         print 'Starting Domain Acquisition'
         self.recv_t = threading.Thread(target=self.__unicast_recv)
+        self.recv_t.daemon = True
         self.recv_t.start()
 
     def stop(self):
         print 'Stopping Domain Acquisition'
+        self.unicast_socket.close()
         self.recv_t.do_run = False
         #self.recv_t.join()
 

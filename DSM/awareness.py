@@ -21,11 +21,13 @@ class Awareness:
     def start(self):
         print 'Starting Domain Awareness'
         self.hrtb_t = threading.Thread(target=self.__heartbeat)
+        self.hrtb_t.daemon = True
         self.hrtb_t.start()
 
     def stop(self):
         print 'Stopping Domain Awareness'
         self.hrtb_t.do_run = False
+        self.broadcast_socket.close()
         self.hrtb_t.join()
 
     def __heartbeat(self):
