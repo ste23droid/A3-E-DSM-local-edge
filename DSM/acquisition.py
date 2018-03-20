@@ -1,6 +1,7 @@
 import threading
 import time
 import os
+import shutil
 from socket import *
 from subprocess import call
 
@@ -40,6 +41,7 @@ class Acquisition:
 
     def __unicast_recv(self):
         print 'Domain Unicast Receiver Started'
+        self.__clearFolder('example-lambda')
         t = threading.currentThread()
         while getattr(t, "do_run", True):
             data, rcvr = self.unicast_socket.recvfrom(1024)
@@ -49,9 +51,11 @@ class Acquisition:
                  print 'Acquisition URL: ' + data
                  print 'Client IP: ' + rcvr[0]
                  self.__startTimer()
-                 result = self.__checkAcquisition(self.__parse_service_request(data, rcvr[0]))
+                 acquisition_request = self.__parse_service_request(data, rcvr[0])
+                 result = self.__checkAcquisition(acquisition_request)
                  self.__stopTimer()
                  self.__logResult(result)
+                 self.__clearFolder(acquisition_request[2])
 
     def __startTimer(self):
         self.start_time = time.time()
@@ -63,6 +67,9 @@ class Acquisition:
         acquisition_time = str(self.stop_time - self.start_time)
         with open(self.LOG_FILE, "a") as log_file:
             log_file.write(acquisition_time + '\t' + result + '\n')
+
+    def __clearFolder(self, repo_name):
+        shutil.rmtree(repo_name)
 
     def __parse_service_request(self, data, client_ip):
         fields = data.rsplit(';', 1)

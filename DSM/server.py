@@ -4,7 +4,7 @@ from awareness import Awareness
 from acquisition import Acquisition
 
 DEFAULT_EXECUTION_TIME = 1000 #seconds
-HEARBEAT_INTERVAL = 5 #seconds
+HEARBEAT_INTERVAL = 60 #seconds
 BROADCAST_IP = '10.0.0.255'
 BROADCAST_PORT = 12345
 UNICAST_PORT = 12341

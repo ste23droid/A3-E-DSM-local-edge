@@ -56,7 +56,7 @@ class Client:
             print 'Client Sending Identification ', server_ip
             FUNCTION_URL = 'https://github.com/mgarriga/example-lambda;example-lambda'
             self.unicast_socket.sendto(FUNCTION_URL,(server_ip, int(Acquisition.UNICAST_PORT)))
-            self.server_discovered = True
+            #self.server_discovered = True
 
     def confirmation(self, service_name):
         print 'Service confirmation for ' + service_name + ' received'
