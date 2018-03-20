@@ -41,7 +41,6 @@ class Acquisition:
 
     def __unicast_recv(self):
         print 'Domain Unicast Receiver Started'
-        self.__clearFolder('example-lambda')
         t = threading.currentThread()
         while getattr(t, "do_run", True):
             data, rcvr = self.unicast_socket.recvfrom(1024)
