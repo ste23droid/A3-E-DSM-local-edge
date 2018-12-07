@@ -1,20 +1,20 @@
 import threading
 import time
-import os
 from socket import *
+
 
 class Awareness:
 
-    HELLO_MSG = 'HI'
+    DOMAIN_URL = "http://github.com/mainUrl"
     BROADCAST_IP = '255.255.255.255'
     BROADCAST_PORT = '12345'
-    INTERVAL = 5
+    INTERVAL = 60  # seconds
 
     def __init__(self, broadcast_ip, broadcast_port, interval):
         self.BROADCAST_IP = broadcast_ip
         self.BROADCAST_PORT = broadcast_port
         self.INTERVAL = interval
-        self.broadcast_socket=socket(AF_INET, SOCK_DGRAM)
+        self.broadcast_socket = socket(AF_INET, SOCK_DGRAM)
         self.broadcast_socket.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
         self.broadcast_socket.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
 
@@ -34,6 +34,6 @@ class Awareness:
         print 'Domain\'s Advertisement Broadcast Started'
         t = threading.currentThread()
         while getattr(t, "do_run", True):
-            print 'Sending ' + self.HELLO_MSG
-            self.broadcast_socket.sendto(self.HELLO_MSG,(self.BROADCAST_IP, self.BROADCAST_PORT))
+            print 'Sending Awareness Message'
+            self.broadcast_socket.sendto(self.DOMAIN_URL, (self.BROADCAST_IP, self.BROADCAST_PORT))
             time.sleep(self.INTERVAL)
