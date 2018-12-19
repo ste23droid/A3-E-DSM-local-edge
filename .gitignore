@@ -3,7 +3,7 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-/Manager/A3E-AWS-face-detection/
+/Manager/repositories/
 /environment
 /static
 /templates
