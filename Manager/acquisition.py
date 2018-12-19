@@ -3,19 +3,19 @@ import os
 import json
 # open whisk cli
 from subprocess import call
-
-REPOS_PATH = "./repositories"
+from function import Function
 
 class Acquisition:
 
-    def __init__(self):
+    def __init__(self, runtimes):
         self.whisk_namespace = "https://whisknamespace/"
         self.ws_endpoint = "wss://whisknamespace/"
         self.CONFIG_FILE_NAME = "a3e_config.json"
         self.INSTALL_UPDATED = "install_updated"
         self.INSTALL_FAILED = "install_failed"
         self.INSTALL_DONE = "install_done"
-        self.CONFIG_PARSE_FAIL = "config_parse_fail"
+        self.REPOS_PATH = "./repositories"
+        self.RUNTIMES = runtimes
 
     def __is_compatible(self, func_repo):
         # TODO: for compatiblity we need to add open whisk about GPU support, and ram,
@@ -29,34 +29,22 @@ class Acquisition:
         functions = json_content['functions']
         identifications = []
         for func_repo in set(functions):
-            is_compatible = self.__check_acquisition(func_repo)
-
-            if is_compatible:
-                identification = {
-                                   "function": func_repo,
-                                   "compatible": True,
-                                   "endpoint": self.__get_func_http_endpoint(func_repo)
-                                 }
-            else:
-                identification = {
-                                  "function": func_repo,
-                                  "compatible": False,
-                                 }
-            identifications.append(identification)
+            identifications.append(self.__acquire(func_repo))
         return {
             "identifications": identifications,
             "monitoring_endpoint": self.whisk_namespace + "monitoring",
             "websocket_endpoint": self.ws_endpoint
-        }
+            }
 
-    def __check_acquisition(self, func_repo):
+    def __acquire(self, func_repo):
+        # return True
         splits = func_repo.split('/')
         # https://github.com/ste23droid/A3E-AWS-face-detection
         repo_owner = splits[3]
         repo_name = splits[4]
         print('Checking Acquisition of {}'.format(func_repo))
 
-        path_exists = os.path.exists("{}/{}/{}".format(REPOS_PATH, repo_owner, repo_name))
+        path_exists = os.path.exists("{}/{}/{}".format(self.REPOS_PATH, repo_owner, repo_name))
         if not path_exists:
             print('Acquisition result: ', self.__clone_repo(repo_owner, func_repo))
         else:
@@ -64,46 +52,61 @@ class Acquisition:
             print('Update result: ', self.__update_repo(repo_owner, repo_name, func_repo))
 
         # check config
-        # parse_result = self.__parse_config(repo_name)
-        # if parse_result != self.CONFIG_PARSE_FAIL:
-        #    install_result = self.__perform_installation(repo_name, parse_result)
-        #    print(install_result)
-
+        parsed_function = self.__parse_config__(repo_owner, repo_name)
+        if parsed_function is not None:
+             # try to create function on openwhisk
+             install_result = self.__perform_installation(repo_name, parsed_function)
+             if install_result != self.INSTALL_FAILED:
+                 return {
+                     "function": func_repo,
+                     "compatible": True,
+                     "endpoint": self.__get_function_endpoint(func_repo)
+                 }
+        return {
+                  "function": func_repo,
+                  "compatible": False
+               }
 
     def __clone_repo(self, repo_owner, repo_url):
         print('Cloning repo {}'.format(repo_url))
-        return call("mkdir -p {}/{}; ".format(REPOS_PATH, repo_owner) +
-                    "cd {}/{}; ".format(REPOS_PATH, repo_owner) +
+        return call("mkdir -p {}/{}; ".format(self.REPOS_PATH, repo_owner) +
+                    "cd {}/{}; ".format(self.REPOS_PATH, repo_owner) +
                     "git clone {} ".format(repo_url), shell=True)
 
 
     def __update_repo(self, repo_owner, repo_name, repo_url):
         # TODO mettere cartelle per namespace utente
         print('Updating repo {}'.format(repo_url))
-        return call("cd {}/{}/{}; ".format(REPOS_PATH, repo_owner, repo_name) +
+        return call("cd {}/{}/{}; ".format(self.REPOS_PATH, repo_owner, repo_name) +
                     "git pull origin master ", shell=True)
 
-    def __parse_config(self, repo_name):
+    def __parse_config__(self, repo_owner, repo_name):
         print('Checking for A3E config file in repo')
         # print os.path.dirname(os.path.abspath(__file__))
-        repo_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), repo_name)
+        repositories_directory = os.path.join(os.path.dirname(os.path.abspath(__file__)), "repositories")
+        repo_directory = os.path.join(os.path.join(repositories_directory, repo_owner), repo_name)
+        print(repo_directory)
+
         # print project_dir
-        for file_name in os.listdir(repo_dir):
+        for file_name in os.listdir(repo_directory):
             if file_name == self.CONFIG_FILE_NAME:
-                file_path = os.path.join(repo_dir, file_name)
-                # print file_path
-                dependencies = []
+                file_path = os.path.join(repo_directory, file_name)
+                print(file_path)
+                func_dependencies = []
                 with open(file_path, mode='r') as f:
                     json_content = json.load(f)
-                    func_name = json_content["name"]
+                    func_name = json_content["functionName"]
                     runtime = json_content["runtime"]
                     runtime_version = json_content["runtimeVersion"]
                     memory = json_content["memory"]
+                    authenticated = json_content["authenticated"]
+                    func_json_param_name = json_content["paramName"]
                     for dependency in json_content["dependencies"]:
-                        dependencies.append(dependency)
-                    func_file_path = os.path.join(repo_dir, json_content["path"])
-                    return func_name, func_file_path, runtime, runtime_version, memory, dependencies
-        return self.CONFIG_PARSE_FAIL
+                        func_dependencies.append(dependency)
+                    func_path = os.path.join(repo_directory, json_content["path"])
+                    return Function(func_name, func_path, runtime, runtime_version,
+                                    func_dependencies, memory, authenticated, func_json_param_name)
+        return None
 
     def __perform_installation(self, repo_name, parse_result):
         func_name = parse_result[0]
@@ -130,3 +133,6 @@ class Acquisition:
                 return self.INSTALL_FAILED
         else:
             return self.INSTALL_DONE
+
+    def __get_function_endpoint(self, func_repo):
+        pass

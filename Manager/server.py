@@ -8,7 +8,7 @@ from flask import Flask, request, jsonify
 import logging
 
 DEFAULT_EXECUTION_TIME = 86400  # seconds
-HEARTBEAT_INTERVAL = 10  # seconds
+HEARTBEAT_INTERVAL = 15  # seconds
 # BROADCAST_IP = '10.79.11.255'
 BROADCAST_IP = '192.168.1.255'
 BROADCAST_PORT = 12345
@@ -37,7 +37,6 @@ DEFAULT_RUNTIME_JSON = "{\"name\": \"ste23/whisk-python2action-alpine-opencv-num
                     \"version\": \"5.3.0\"}, \
                    {\"lib\": \"opencv\",   \
                     \"version\": \"3.4.2\"} ]}"
-DEFAULT_RUNTIME_URL = None
 APPLICATION_JSON_HEADER = {"Content-Type": "application/json"}
 
 app = Flask(__name__)
@@ -65,7 +64,7 @@ def monitoring():
     return 'Hello World!'
 
 
-def __runtimes_ready():
+def runtimes_ready():
     runtimes_url = COUCH_DB_BASE + "/" + DB_RUNTIMES_NAME
     response = requests.request("GET", runtimes_url)
     if response.status_code == 200:
@@ -86,8 +85,6 @@ def __runtimes_ready():
             print(add_default_runtime.json())
             if add_default_runtime.status_code == 201:
                 print("Created A3E default runtime")
-                DEFAULT_RUNTIME_URL = COUCH_DB_BASE + "/" + DB_RUNTIMES_NAME + "/" + add_default_runtime.json()["id"]
-                print("Default runtime url - {}".format(DEFAULT_RUNTIME_URL))
                 return True
             else:
                 print(add_default_runtime.json()["reason"])
@@ -97,14 +94,32 @@ def __runtimes_ready():
     return False
 
 
+def get_runtimes():
+    runtimes = []
+    get_list_runtimes = requests.get(COUCH_DB_BASE + "/" + DB_RUNTIMES_NAME + "/_all_docs")
+    if get_list_runtimes.status_code == 200:
+        list_runtimes = get_list_runtimes.json()
+        # print(type(list_runtimes))
+        for elem in list_runtimes["rows"]:
+            get_runtime = requests.get(COUCH_DB_BASE + "/" + DB_RUNTIMES_NAME + "/" + elem["id"])
+            if get_runtime.status_code == 200:
+                runtimes.append(get_runtime.json())
+    else:
+        print("Error, unable to get any runtime!!!")
+    assert len(runtimes) > 0
+    return runtimes
+
 if __name__ == "__main__":
 
-    if __runtimes_ready():
-        awareness = Awareness(BROADCAST_IP, BROADCAST_PORT, HEARTBEAT_INTERVAL, IDENTIFICATION_URL)
-        awareness.start()
-        acquisition = Acquisition()
-        app.run(host=FLASK_HOST_IP, port=FLASK_PORT, debug=True)
-        time.sleep(DEFAULT_EXECUTION_TIME)
+    if runtimes_ready():
+         runtimes = get_runtimes()
+         #awareness = Awareness(BROADCAST_IP, BROADCAST_PORT,
+                           #  HEARTBEAT_INTERVAL, IDENTIFICATION_URL)
+         #awareness.start()
+         acquisition = Acquisition(runtimes)
+         acquisition.__parse_config__("ste23droid", "A3E-OpenWhisk-face-detection")
+         # app.run(host=FLA K_HOST_IP, port=FLASK_PORT, debug=True)
+         time.sleep(DEFAULT_EXECUTION_TIME)
         # awareness.stop()
         # acquisition.stop()
     else:
