@@ -1,6 +1,7 @@
 from __future__ import print_function
 import os
 import json
+import re
 # open whisk cli
 from subprocess import call
 from function import Function
@@ -11,7 +12,6 @@ class Acquisition:
         self.whisk_namespace = "https://whisknamespace/"
         self.ws_endpoint = "wss://whisknamespace/"
         self.CONFIG_FILE_NAME = "a3e_config.json"
-        self.INSTALL_UPDATED = "install_updated"
         self.INSTALL_FAILED = "install_failed"
         self.INSTALL_DONE = "install_done"
         self.REPOS_PATH = "./repositories"
@@ -29,14 +29,14 @@ class Acquisition:
         functions = json_content['functions']
         identifications = []
         for func_repo in set(functions):
-            identifications.append(self.__acquire(func_repo))
+            identifications.append(self.__acquire__(func_repo))
         return {
             "identifications": identifications,
             "monitoring_endpoint": self.whisk_namespace + "monitoring",
             "websocket_endpoint": self.ws_endpoint
             }
 
-    def __acquire(self, func_repo):
+    def __acquire__(self, func_repo):
         # return True
         splits = func_repo.split('/')
         # https://github.com/ste23droid/A3E-AWS-face-detection
@@ -52,10 +52,10 @@ class Acquisition:
             print('Update result: ', self.__update_repo(repo_owner, repo_name, func_repo))
 
         # check config
-        parsed_function = self.__parse_config__(repo_owner, repo_name)
+        parsed_function = self.__parse_config__(repo_owner, repo_name, func_repo)
         if parsed_function is not None:
              # try to create function on openwhisk
-             install_result = self.__perform_installation(repo_name, parsed_function)
+             install_result = self.__perform_installation(parsed_function)
              if install_result != self.INSTALL_FAILED:
                  return {
                      "function": func_repo,
@@ -80,7 +80,7 @@ class Acquisition:
         return call("cd {}/{}/{}; ".format(self.REPOS_PATH, repo_owner, repo_name) +
                     "git pull origin master ", shell=True)
 
-    def __parse_config__(self, repo_owner, repo_name):
+    def __parse_config__(self, repo_owner, repo_name, func_repo):
         print('Checking for A3E config file in repo')
         # print os.path.dirname(os.path.abspath(__file__))
         repositories_directory = os.path.join(os.path.dirname(os.path.abspath(__file__)), "repositories")
@@ -104,35 +104,68 @@ class Acquisition:
                     for dependency in json_content["dependencies"]:
                         func_dependencies.append(dependency)
                     func_path = os.path.join(repo_directory, json_content["path"])
-                    return Function(func_name, func_path, runtime, runtime_version,
+                    return Function(func_name, func_repo, func_path, runtime, runtime_version,
                                     func_dependencies, memory, authenticated, func_json_param_name)
         return None
 
-    def __perform_installation(self, repo_name, parse_result):
-        func_name = parse_result[0]
-        print(func_name)
-        func_file_path = parse_result[1]
-        print(func_file_path)
-        runtime = parse_result[2]
-        print(runtime)
-        runtime_version = parse_result[3]
-        print(runtime_version)
-        memory = parse_result[4]
-        dependencies = parse_result[5]
-        print('Installing function ' + func_name + ' as ' + func_file_path)
-        add_function_cmd = 'wsk action create ' + func_name + ' ' + func_file_path + ' --web yes --insecure'
-        install_cmd = "cd " + repo_name + '; ' + add_function_cmd
-        install_result = call(install_cmd, shell=True)
-        if install_result != 0:
-            print('Updating function ' + func_name + ' as ' + func_file_path)
-            update_function_cmd = 'wsk action update ' + func_name + ' ' + func_file_path + ' --web yes --insecure'
-            update_cmd = "cd " + repo_name + '; ' + update_function_cmd
-            if call(update_cmd, shell=True) == 0:
-                return self.INSTALL_UPDATED
-            else:
-                return self.INSTALL_FAILED
+    def __satisfies_dependencies(self, runtime, function):
+
+        if runtime["language"] == function.runtime and runtime["languageVersion"] == function.runtimeVersion:
+            runtime_libs_set = set(dependency["lib"] for dependency in runtime["dependencies"])
+            function_libs_set = set(dependency["lib"] for dependency in function.dependencies)
+            diff_set = [lib for lib in runtime_libs_set if lib not in function_libs_set]
+
+            if len(diff_set) >= 0:
+                # runtime may have exact same dependencies or more dependencies than the function
+                for f_dep in function.dependencies:
+                    f_lib_version = f_dep["version"]
+                    # requirement can be >= or ==
+                    f_lib_requirement = f_lib_version[:2]
+                    f_lib_num_version = int(re.sub(".", "", f_lib_version[2:]))
+                    r_lib_num_version = \
+                        [dependency["version"] for dependency in runtime["dependencies"] if
+                         dependency["lib"] == f_dep["lib"]][0]
+                    if (f_lib_requirement == ">=" and r_lib_num_version < f_lib_num_version) or \
+                            (f_lib_requirement == "==" and r_lib_num_version != f_lib_num_version):
+                        return False
+                return True
+
+        return False
+
+    def __perform_installation(self, function):
+        print("Installing (creating or updating) function {} from repo {}".format(function.name, function.repo))
+
+        # select a known suitable runtime
+        chosen_runtime = None
+        if len(self.RUNTIMES == 1):
+            chosen_runtime = self.RUNTIMES[0]
         else:
-            return self.INSTALL_DONE
+            # find the first suitable runtime for the function
+            for runtime in self.RUNTIMES:
+                if self.__satisfies_dependencies(runtime, function):
+                    chosen_runtime = runtime
+                    break
+
+        # docker hub name of the runtime identifies a custom runtime
+        hub_runtime_name = chosen_runtime["name"]
+
+        # wsk update can also create an action if it does not exist! see docs
+        if not function.authenticated:
+            update_function_cmd = 'wsk action update {} --docker \
+                                   {} {} --web yes -m {} --insecure'.format(function.name,
+                                                                            hub_runtime_name,
+                                                                            function.path,
+                                                                            function.memory)
+        else:
+            update_function_cmd = 'wsk action update {} --docker \
+                                   {} {} -m {} --insecure'.format(function.name,
+                                                                  hub_runtime_name,
+                                                                  function.path,
+                                                                  function.memory)
+
+        if call(update_function_cmd, shell=True) != 0:
+                return self.INSTALL_FAILED
+        return self.INSTALL_DONE
 
     def __get_function_endpoint(self, func_repo):
         pass

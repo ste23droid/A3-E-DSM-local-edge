@@ -117,7 +117,7 @@ if __name__ == "__main__":
                            #  HEARTBEAT_INTERVAL, IDENTIFICATION_URL)
          #awareness.start()
          acquisition = Acquisition(runtimes)
-         acquisition.__parse_config__("ste23droid", "A3E-OpenWhisk-face-detection")
+         acquisition.__acquire__("https://github.com/ste23droid/A3E-OpenWhisk-face-detection/")
          # app.run(host=FLA K_HOST_IP, port=FLASK_PORT, debug=True)
          time.sleep(DEFAULT_EXECUTION_TIME)
         # awareness.stop()
