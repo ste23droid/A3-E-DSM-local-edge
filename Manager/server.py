@@ -27,7 +27,7 @@ MONITORING_URL = FLASK_URL + "/monitoring"
 DB_RUNTIMES_NAME = "runtimes"
 COUCH_DB_BASE = "http://{}:{}@".format(COUCH_DB_WHISK_DEFAULT_USER, COUCH_DB_WHISK_DEFAULT_PASSWORD) \
                 + str(COUCH_DB_HOST_IP) + ":" + str(COUCH_DB_PORT)
-DEFAULT_RUNTIME_JSON = "{\"name\": \"ste23/whisk-python2action-alpine-opencv-numpy-pillow:ubuntumac\", \
+DEFAULT_RUNTIME_JSON = "{\"name\": \"ste23/whisk-python2action-alpine-opencv-numpy-pillow:prod\", \
                \"language\": \"python\",  \
                \"languageVersion\": \"2.7\", \
                \"dependencies\": [ \

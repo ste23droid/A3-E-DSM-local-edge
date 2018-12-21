@@ -2,9 +2,9 @@ from __future__ import print_function
 import os
 import json
 import re
-# open whisk cli
 from subprocess import call
 from function import Function
+
 
 class Acquisition:
 
@@ -13,6 +13,13 @@ class Acquisition:
         self.ws_endpoint = "wss://whisknamespace/"
         self.CONFIG_FILE_NAME = "a3e_config.json"
         self.INSTALL_FAILED = "install_failed"
+
+        # use wsk property get -i to get this information
+        self.WHISK_NAMESPACE = "guest"
+        self.WHISK_API_HOST = "192.168.1.214"
+        self.WHISK_API_VERSION = "v1"
+        self.WHISK_AUTH = ""
+
         self.INSTALL_DONE = "install_done"
         self.REPOS_PATH = "./repositories"
         self.RUNTIMES = runtimes
@@ -31,10 +38,10 @@ class Acquisition:
         for func_repo in set(functions):
             identifications.append(self.__acquire__(func_repo))
         return {
-            "identifications": identifications,
-            "monitoring_endpoint": self.whisk_namespace + "monitoring",
-            "websocket_endpoint": self.ws_endpoint
-            }
+                "identifications": identifications,
+                "monitoring_endpoint": self.whisk_namespace + "monitoring",
+                "websocket_endpoint": self.ws_endpoint
+               }
 
     def __acquire__(self, func_repo):
         # return True
@@ -58,9 +65,9 @@ class Acquisition:
              install_result = self.__perform_installation(parsed_function)
              if install_result != self.INSTALL_FAILED:
                  return {
-                     "function": func_repo,
+                     "function": parsed_function.repo,
                      "compatible": True,
-                     "endpoint": self.__get_function_endpoint(func_repo)
+                     "endpoint": self.__get_function_endpoint(parsed_function)
                  }
         return {
                   "function": func_repo,
@@ -104,13 +111,13 @@ class Acquisition:
                     for dependency in json_content["dependencies"]:
                         func_dependencies.append(dependency)
                     func_path = os.path.join(repo_directory, json_content["path"])
-                    return Function(func_name, func_repo, func_path, runtime, runtime_version,
+                    return Function(func_name, func_repo, repo_owner, repo_name, func_path, runtime, runtime_version,
                                     func_dependencies, memory, authenticated, func_json_param_name)
         return None
 
     def __satisfies_dependencies(self, runtime, function):
 
-        if runtime["language"] == function.runtime and runtime["languageVersion"] == function.runtimeVersion:
+        if runtime["language"] == function.runtime and runtime["languageVersion"] == function.runtime_version:
             runtime_libs_set = set(dependency["lib"] for dependency in runtime["dependencies"])
             function_libs_set = set(dependency["lib"] for dependency in function.dependencies)
             diff_set = [lib for lib in runtime_libs_set if lib not in function_libs_set]
@@ -132,8 +139,8 @@ class Acquisition:
 
         return False
 
-    def __perform_installation(self, function):
-        print("Installing (creating or updating) function {} from repo {}".format(function.name, function.repo))
+    def __perform_installation(self, func):
+        print("Installing (creating or updating) function {} from repo {}".format(func.name, func.repo))
 
         # select a known suitable runtime
         chosen_runtime = None
@@ -142,30 +149,46 @@ class Acquisition:
         else:
             # find the first suitable runtime for the function
             for runtime in self.RUNTIMES:
-                if self.__satisfies_dependencies(runtime, function):
+                if self.__satisfies_dependencies(runtime, func):
                     chosen_runtime = runtime
                     break
 
         # docker hub name of the runtime identifies a custom runtime
         hub_runtime_name = chosen_runtime["name"]
 
-        # wsk update can also create an action if it does not exist! see docs
-        if not function.authenticated:
-            update_function_cmd = 'wsk action update {} --docker \
-                                   {} {} --web yes -m {} --insecure'.format(function.name,
+        if not func.authenticated:
+            #  wsk package update --- update an existing package, or create a package if it does not exist
+            call('wsk package update {} --insecure'.format(func.repo_owner), shell=True)
+            #  wsk action update --- update an existing action, or create an action if it does not exist
+            update_function_cmd = 'wsk action update {}/{} --docker \
+                                   {} {} --web yes -m {} --insecure'.format(func.repo_owner,
+                                                                            func.name,
                                                                             hub_runtime_name,
-                                                                            function.path,
-                                                                            function.memory)
+                                                                            func.path,
+                                                                            func.memory)
         else:
-            update_function_cmd = 'wsk action update {} --docker \
-                                   {} {} -m {} --insecure'.format(function.name,
+            update_function_cmd = 'wsk action update {}/{} --docker \
+                                   {} {} -m {} --insecure'.format(func.repo_owner,
+                                                                  func.name,
                                                                   hub_runtime_name,
-                                                                  function.path,
-                                                                  function.memory)
-
+                                                                  func.path,
+                                                                  func.memory)
         if call(update_function_cmd, shell=True) != 0:
                 return self.INSTALL_FAILED
         return self.INSTALL_DONE
 
-    def __get_function_endpoint(self, func_repo):
-        pass
+    def __get_function_endpoint(self, func):
+        # https://github.com/apache/incubator-openwhisk/blob/master/docs/rest_api.md
+        if not func.authenticated:
+          # https://192.168.1.214/api/v1/web/guest/ste23droid/faceDetection
+          return "https://{}/api/{}/web/{}/{}/{}".format(self.WHISK_API_HOST,
+                                                         self.WHISK_API_VERSION,
+                                                         self.WHISK_NAMESPACE,
+                                                         func.repo_owner,
+                                                         func.name)
+
+        return "https://{}/api/{}/namespaces/{}/actions/{}/{}".format(self.WHISK_API_HOST,
+                                                                      self.WHISK_API_VERSION,
+                                                                      self.WHISK_NAMESPACE,
+                                                                      func.repo_owner,
+                                                                      func.name)
