@@ -31,6 +31,7 @@ DEFAULT_RUNTIME_JSON = "{\"name\": \"ste23/whisk-python2action-alpine-opencv-num
                                {\"lib\": \"opencv\",   \
                                 \"version\": \"3.4.2\"} ]}"
 APPLICATION_JSON_HEADER = {"Content-Type": "application/json"}
+
 CONFIG_FILE_NAME = "a3e_config.json"
 # use wsk property get -i to get this information
 WHISK_NAMESPACE = "guest"

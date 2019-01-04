@@ -1,0 +1,9 @@
+{
+  "views": {
+    "runtime_metrics": {
+      "reduce": "function (keys, values, rereduce) {\n  var stdDeviation=0.0;\n  var count=0;\n  var total=0.0;\n  var sqrTotal=0.0;\n\n  if (!rereduce) {\n    // we are reducing over the leaf nodes of the Btree, which are the emitted values from the map function\n    for(var i in values) {\n      total = total + values[i];\n      sqrTotal = sqrTotal + (values[i] * values[i]);\n    }\n    count = values.length;\n  } else {\n    // rereduce phase, we are reducing on internal nodes of the Btree, reducing previously reduced values\n    for(var i in values) {\n      count = count + values[i].count;\n      total = total + values[i].total;\n      sqrTotal = sqrTotal + values[i].sqrTotal;\n    }\n  }\n\n  var variance =  (sqrTotal - ((total * total)/count)) / count;\n  var average = total / count;\n  stdDeviation = Math.sqrt(variance);\n\n  return {\"average\": average,\n          \"stdDeviation\":stdDeviation,\n          \"count\":count,\n          \"total\":total,\n          \"sqrTotal\":sqrTotal};\n};\n",
+      "map": "function (doc) {\n  emit(doc.function, doc.execMs);\n}"
+    }
+  },
+  "language": "javascript"
+}

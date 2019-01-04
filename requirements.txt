@@ -1,0 +1,4 @@
+Flask>=1.0.2
+pip>=18.1
+requests>=2.21.0
+setuptools>=4.60.2

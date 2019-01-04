@@ -9,6 +9,7 @@ from subprocess import check_output
 import config
 import threading
 from flask import Flask, request, jsonify, Response
+from os.path import dirname, abspath, join
 
 app = Flask(__name__)
 awareness = None
@@ -177,6 +178,40 @@ def is_metrics_db_ready():
 
     return False
 
+def are_db_views_ready():
+
+    metrics_design_doc_url = "{}/{}/_design/{}".format(config.COUCH_DB_BASE,
+                                                       config.DB_METRICS_NAME,
+                                                       config.DB_METRICS_DESIGN_DOC)
+    get_design_doc = requests.get(metrics_design_doc_url)
+
+    if get_design_doc.status_code == 200:
+        print("Design document found!")
+        return True
+
+    elif get_design_doc.status_code == 404:
+        print("Metrics design document not found, creating it...")
+
+        # this will create both design doc and the needed views inside it
+        couch_db_parent_dir = dirname(abspath(__file__))
+        metrics_design_doc_path = join(join(couch_db_parent_dir, "couchdb"), "metrics_design_doc.json")
+        print(metrics_design_doc_path)
+        create_design_doc = requests.put(metrics_design_doc_url,
+                                         data=open(metrics_design_doc_path, "r"),
+                                         headers=config.APPLICATION_JSON_HEADER)
+
+        if create_design_doc.status_code == 201:
+            print("Metrics design document and views created")
+            return True
+
+        else:
+            print(create_design_doc.json()["reason"])
+    else:
+        print(get_design_doc.json()["reason"])
+
+    return False
+
+
 def get_runtimes():
     runtimes = []
     get_list_runtimes = requests.get(config.COUCH_DB_BASE + "/" + config.DB_RUNTIMES_NAME + "/_all_docs")
@@ -194,14 +229,14 @@ def get_runtimes():
 
 if __name__ == "__main__":
 
-    if runtimes_ready() and is_metrics_db_ready():
+    if runtimes_ready() and is_metrics_db_ready() and are_db_views_ready():
          runtimes = get_runtimes()
          #awareness = Awareness()
          #awareness.start()
          acquisition = Acquisition(runtimes)
          # acquisition.__acquire__("https://github.com/ste23droid/A3E-OpenWhisk-image-recognition/")
          acquisition.__acquire__("https://github.com/ste23droid/A3E-OpenWhisk-face-detection/")
-         get_metrics("guest/ste23droid/faceDetection")
+         print(get_metrics("guest/ste23droid/faceDetection"))
          # acquisition.__acquire__("https://github.com/ste23droid/A3E-OpenWhisk-neural-transfer/")
          app.run(host=config.FLASK_HOST_IP, port=config.FLASK_PORT, debug=False)
          t.sleep(config.DEFAULT_EXECUTION_TIME)
