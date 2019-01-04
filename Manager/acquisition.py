@@ -14,6 +14,8 @@ class Acquisition:
         self.INSTALL_FAILED = "install_failed"
         self.INSTALL_DONE = "install_done"
         self.runtimes = runtimes
+        self.map_repo_to_action_name = {}
+        requests.packages.urllib3.disable_warnings()
 
     # def __is_compatible(self, func_repo):
     #     # TODO: for compatiblity we need to add open whisk about GPU support, and ram,
@@ -34,7 +36,7 @@ class Acquisition:
     def __acquire__(self, func_repo):
         # return True
         splits = func_repo.split('/')
-        # https://github.com/ste23droid/A3E-AWS-face-detection
+        # https://github.com/ste23droid/A3E-OpenWhisk-face-detection
         repo_owner = splits[3]
         repo_name = splits[4]
         print('Checking Acquisition of {}'.format(func_repo))
@@ -55,7 +57,7 @@ class Acquisition:
                  return {
                      "function": parsed_function.repo,
                      "compatible": True,
-                     "endpoint": self.__get_function_endpoint(parsed_function)
+                     "name": "{}/{}".format(parsed_function.repo_owner, parsed_function.name)
                  }
         return {
                   "function": func_repo,
@@ -99,8 +101,13 @@ class Acquisition:
                     for dependency in json_content["dependencies"]:
                         func_dependencies.append(dependency)
                     func_path = os.path.join(repo_directory, json_content["path"])
+
+                    # save mapping repo to action name
+                    self.map_repo_to_action_name[func_repo] = "{}/{}/{}".format(config.WHISK_NAMESPACE, repo_owner, func_name)
+
                     return Function(func_name, func_repo, repo_owner, repo_name, func_path, runtime, runtime_version,
                                     func_dependencies, memory, authenticated, func_json_param_name)
+        print("Error... no config file found!!!")
         return None
 
     def __satisfies_dependencies(self, runtime, function):
@@ -130,18 +137,19 @@ class Acquisition:
     def __perform_installation(self, func):
         print("Installing (creating or updating) function {} from repo {}".format(func.name, func.repo))
 
-        # create database to hold metrics for this function
-        # http://docs.couchdb.org/en/2.3.0/api/database/common.html#put--db
-        create_db_response = requests.put("{}/{}_{}_{}".format(config.COUCH_DB_BASE,
-                                                               config.DB_METRICS_BASE_NAME,
-                                                               func.repo_owner.lower(),
-                                                               func.name.lower()))
-        if create_db_response.status_code == 201:
-            print("Function metrics db created successfully")
-        elif create_db_response.status_code == 412:
-            print("Function metrics db already exists, no creation needed")
-        else:
-            print("Error creating function metrics db, code {}".format(create_db_response.status_code))
+        # # create database to hold metrics for this function
+        # # http://docs.couchdb.org/en/2.3.0/api/database/common.html#put--db
+        # create_db_response = requests.put("{}/{}_{}_{}".format(config.COUCH_DB_BASE,
+        #                                                        config.DB_METRICS_BASE_NAME,
+        #                                                        func.repo_owner.lower(),
+        #                                                        func.name.lower()))
+        # if create_db_response.status_code == 201:
+        #     print("Function metrics db created successfully")
+        # elif create_db_response.status_code == 412:
+        #     print("Function metrics db already exists, no creation needed")
+        # else:
+        #     print(create_db_response.content)
+        #     print("Error creating function metrics db, code {}".format(create_db_response.status_code))
 
         # select a known suitable runtime
         chosen_runtime = None
@@ -157,18 +165,21 @@ class Acquisition:
         # docker hub name of the runtime identifies a custom runtime
         hub_runtime_name = chosen_runtime["name"]
 
+        # Each action is created with the following name: repoOwner_functionName
         if not func.authenticated:
+            # https://github.com/apache/incubator-openwhisk/blob/master/docs/webactions.md
             #  wsk package update --- update an existing package, or create a package if it does not exist
             call('{} package update {} --insecure'.format(config.WSK_PATH, func.repo_owner), shell=True)
             #  wsk action update --- update an existing action, or create an action if it does not exist
             update_function_cmd = '{} action update {}/{} --docker \
-                                   {} {} --web yes -m {} --insecure'.format(config.WSK_PATH,
+                                   {} {} --web true -m {} --insecure'.format(config.WSK_PATH,
                                                                             func.repo_owner,
                                                                             func.name,
                                                                             hub_runtime_name,
                                                                             func.path,
                                                                             func.memory)
         else:
+            # https://github.com/apache/incubator-openwhisk/blob/master/docs/rest_api.md
             update_function_cmd = '{} action update {}/{} --docker \
                                    {} {} -m {} --insecure'.format(config.WSK_PATH,
                                                                   func.repo_owner,

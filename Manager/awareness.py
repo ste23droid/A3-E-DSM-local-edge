@@ -15,6 +15,7 @@ class Awareness:
     def start(self):
         print('Starting Domain Awareness')
         self.hrtb_t = threading.Thread(target=self.__heartbeat)
+        # thread will die when the main thread dies
         self.hrtb_t.daemon = True
         self.hrtb_t.start()
 
