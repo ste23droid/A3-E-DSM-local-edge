@@ -14,25 +14,42 @@ class A3EWebsocketServerProtocol(WebSocketServerProtocol):
         self.factory = WebSocketServerFactory(u"ws://{}:{}".format(config.WEBSOCKET_HOST, config.WEBSOCKET_PORT))
         self.factory.protocol = A3EWebsocketServerProtocol
 
+
+
+
     async def handleRequest(self, json_request):
         start = t.time()
         json_message = json.dumps(json_request)
-        print(json_message)
-        #
-        # # run request
-        # response = await requests.post("https://{}/api/v1/web/guest/{}".format(config.WHISK_API_HOST, json_request["function"]),
-        #                          data=json_message,
-        #                          verify=False,
-        #                          headers=config.APPLICATION_JSON_HEADER)
-        #
-        # # add action execution metrics to the metrics db
-        # await requests.post("{}/{}".format(config.COUCH_DB_BASE, config.DB_METRICS_NAME),
-        #               data=json.dumps({"function": json_request["function"],
-        #                                "execMs": (t.time() - start) * 1000,
-        #                                "payloadBytes": len(json_message)}),
-        #               verify=False,
-        #               headers=config.APPLICATION_JSON_HEADER)
-        return json_message
+        loop = asyncio.get_event_loop()
+
+        # https://stackoverflow.com/questions/22190403/how-could-i-use-requests-in-asyncio
+        # https://stackoverflow.com/questions/23946895/requests-in-asyncio-keyword-arguments
+        def wrap_exec_request(request_json, message_json):
+            return requests.post(
+                "https://{}/api/v1/web/guest/{}".format(config.WHISK_API_HOST, request_json["function"]),
+                                                        data=message_json,
+                                                        verify=False,
+                                                        headers=config.APPLICATION_JSON_HEADER)
+
+        def wrap_db_request(request_json, message_json, start_time):
+            return requests.post("{}/{}".format(config.COUCH_DB_BASE, config.DB_METRICS_NAME),
+                          data=json.dumps({"function": request_json["function"],
+                                           "execMs": (t.time() - start_time) * 1000,
+                                           "payloadBytes": len(message_json)}),
+                          verify=False,
+                          headers=config.APPLICATION_JSON_HEADER)
+
+        future_exec_response = loop.run_in_executor(None, lambda: wrap_exec_request(request_json=json_request,
+                                                                                    message_json=json_message))
+        exec_response = await future_exec_response
+
+        # add action execution metrics to the metrics db
+        future_db_response = loop.run_in_executor(None, lambda: wrap_db_request(request_json=json_request,
+                                                                               message_json=json_message,
+                                                                               start_time=start))
+        await future_db_response
+
+        return exec_response.content
 
     async def onMessage(self, payload, isBinary):
         print("Websocket received a message")
@@ -43,7 +60,9 @@ class A3EWebsocketServerProtocol(WebSocketServerProtocol):
             except Exception as e:
                 self.sendClose(1000, "Exception raised: {0}".format(e))
             else:
-                self.sendMessage(json.dumps(response).encode('utf8'))
+                # the response should be returned in UTF-8 encoding
+                print("Websocket sending response")
+                self.sendMessage(response)
         else:
             print("A binary message was received from the client, ignoring it ...")
             self.sendClose(1000)
