@@ -9,8 +9,10 @@ COUCH_DB_PORT = 5984
 COUCH_DB_WHISK_DEFAULT_USER = "ste"
 COUCH_DB_WHISK_DEFAULT_PASSWORD = "ste"
 COUCH_DB_HOST_IP = "127.0.0.1"
-COUCH_DB_BASE = "http://{}:{}@".format(COUCH_DB_WHISK_DEFAULT_USER, COUCH_DB_WHISK_DEFAULT_PASSWORD) \
-                 + str(COUCH_DB_HOST_IP) + ":" + str(COUCH_DB_PORT)
+COUCH_DB_BASE = "http://{}:{}@{}:{}".format(COUCH_DB_WHISK_DEFAULT_USER,
+                                            COUCH_DB_WHISK_DEFAULT_PASSWORD,
+                                            COUCH_DB_HOST_IP,
+                                            COUCH_DB_PORT)
 DB_RUNTIMES_NAME = "runtimes"
 DB_METRICS_NAME = "metrics"
 DB_METRICS_DESIGN_DOC = "metrics_doc"
@@ -18,7 +20,7 @@ DB_METRICS_VIEW_NAME = "runtime_metrics"
 
 FLASK_HOST_IP = "192.168.1.214"
 FLASK_PORT = 5050
-FLASK_URL = "http://" + FLASK_HOST_IP + ":" + str(FLASK_PORT)
+FLASK_URL = "http://{}:{}".format(FLASK_HOST_IP, FLASK_PORT)
 FLASK_IDENTIFICATION_URL = FLASK_URL + "/identification"
 FLASK_MONITORING_URL = FLASK_URL + "/monitoring"
 
@@ -41,6 +43,5 @@ WHISK_API_VERSION = "v1"
 WSK_PATH = "/Users/stefano/Desktop/incubator-openwhisk-devtools/docker-compose/openwhisk-src/bin/wsk"
 
 REPOS_PATH = "./repositories"
-WEBSOCKET_HOST = "127.0.0.1"
+WEBSOCKET_HOST = "192.168.1.214"
 WEBSOCKET_PORT = "12323"
-

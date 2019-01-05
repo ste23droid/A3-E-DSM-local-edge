@@ -7,7 +7,7 @@ from acquisition import Acquisition
 from websocketserver import A3EWebsocketServerProtocol
 import config
 from subprocess import check_output
-from flask import Flask, request, jsonify, Response
+from flask import Flask, request, Response
 from os.path import dirname, abspath, join
 
 app = Flask(__name__)
@@ -28,7 +28,8 @@ def identification():
     # print("Received Identification Request from ip: " + client_ip)
     # print("Received Identification json: " + str(content))
     response_json = acquisition.__parse_request__(content)
-    return Response(response_json, mimetype='application/json')
+    print(response_json)
+    return Response(json.dumps(response_json), mimetype='application/json')
 
 
 @app.route('/monitoring', methods=['POST'])
@@ -58,7 +59,7 @@ def monitoring():
             response_items.append({"repo": repo,
                                    "status": status})
     json_response = {"monitorings": response_items}
-    return Response(json_response, mimetype='application/json')
+    return Response(json.dumps(json_response), mimetype='application/json')
 
 
 @app.route('/invoke', methods=['POST'])
@@ -235,12 +236,12 @@ if __name__ == "__main__":
 
     if runtimes_ready() and is_metrics_db_ready() and are_db_views_ready():
          runtimes = get_runtimes()
-         #awareness = Awareness()
-         #awareness.start()
+         awareness = Awareness()
+         awareness.start()
          acquisition = Acquisition(runtimes)
          # acquisition.__acquire__("https://github.com/ste23droid/A3E-OpenWhisk-image-recognition/")
          acquisition.__acquire__("https://github.com/ste23droid/A3E-OpenWhisk-face-detection/")
-         print(get_metrics("guest/ste23droid/faceDetection"))
+         # print(get_metrics("guest/ste23droid/faceDetection"))
          # acquisition.__acquire__("https://github.com/ste23droid/A3E-OpenWhisk-neural-transfer/")
 
          # run Websocket server

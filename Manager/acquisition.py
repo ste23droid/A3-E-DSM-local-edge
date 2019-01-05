@@ -28,8 +28,8 @@ class Acquisition:
             identifications.append(self.__acquire__(func_repo))
         return {
                 "identifications": identifications,
-                "monitoring_endpoint": config.FLASK_MONITORING_URL,
-                "websocket_endpoint": "ws://{}:{}".format(config.WEBSOCKET_HOST, config.WEBSOCKET_PORT)
+                "monitoringEndpoint": config.FLASK_MONITORING_URL,
+                "websocketEndpoint": "ws://{}:{}".format(config.WEBSOCKET_HOST, config.WEBSOCKET_PORT)
                }
 
     def __acquire__(self, func_repo):

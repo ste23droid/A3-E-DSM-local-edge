@@ -29,5 +29,5 @@ class Awareness:
         t = threading.currentThread()
         while getattr(t, "do_run", True):
             print('Sending Awareness Message')
-            self.broadcast_socket.sendto(config.FLASK_IDENTIFICATION_URL, (config.BROADCAST_IP, config.BROADCAST_PORT))
+            self.broadcast_socket.sendto(config.FLASK_IDENTIFICATION_URL.encode(), (config.BROADCAST_IP, config.BROADCAST_PORT))
             time.sleep(config.HEARTBEAT_INTERVAL)
