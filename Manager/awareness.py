@@ -1,4 +1,3 @@
-from __future__ import print_function
 import threading
 import time
 from socket import *
@@ -11,19 +10,19 @@ class Awareness:
         self.broadcast_socket = socket(AF_INET, SOCK_DGRAM)
         self.broadcast_socket.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
         self.broadcast_socket.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
+        self.awthread = threading.Thread(target=self.__heartbeat)
 
     def start(self):
         print('Starting Domain Awareness')
-        self.hrtb_t = threading.Thread(target=self.__heartbeat)
         # thread will die when the main thread dies
-        self.hrtb_t.daemon = True
-        self.hrtb_t.start()
+        self.awthread.daemon = True
+        self.awthread.start()
 
     def stop(self):
         print('Stopping Domain Awareness')
-        self.hrtb_t.do_run = False
+        self.awthread.do_run = False
         self.broadcast_socket.close()
-        self.hrtb_t.join()
+        self.awthread.join()
 
     def __heartbeat(self):
         print('Domain\'s Advertisement Broadcast Started')

@@ -1,13 +1,12 @@
-from __future__ import print_function
 import time as t
 import requests
 import json
 import re
 from awareness import Awareness
 from acquisition import Acquisition
-from subprocess import check_output
+from websocketserver import A3EWebsocketServerProtocol
 import config
-import threading
+from subprocess import check_output
 from flask import Flask, request, jsonify, Response
 from os.path import dirname, abspath, join
 
@@ -97,6 +96,7 @@ def invoke():
                   headers=config.APPLICATION_JSON_HEADER)
     return Response(response.content, mimetype='application/json')
 
+
 def get_metrics(action_name):
     # action name : guest/ste23droid/faceDetection
     action_name = re.sub("/", "_", action_name)
@@ -155,6 +155,7 @@ def runtimes_ready():
 
     return False
 
+
 def is_metrics_db_ready():
     metrics_db_url = config.COUCH_DB_BASE + "/" + config.DB_METRICS_NAME
     get_metrics_db = requests.get(metrics_db_url)
@@ -178,8 +179,8 @@ def is_metrics_db_ready():
 
     return False
 
-def are_db_views_ready():
 
+def are_db_views_ready():
     metrics_design_doc_url = "{}/{}/_design/{}".format(config.COUCH_DB_BASE,
                                                        config.DB_METRICS_NAME,
                                                        config.DB_METRICS_DESIGN_DOC)
@@ -213,19 +214,22 @@ def are_db_views_ready():
 
 
 def get_runtimes():
-    runtimes = []
-    get_list_runtimes = requests.get(config.COUCH_DB_BASE + "/" + config.DB_RUNTIMES_NAME + "/_all_docs")
+    known_runtimes = []
+    get_list_runtimes = requests.get("{}/{}/_all_docs".format(config.COUCH_DB_BASE,config.DB_RUNTIMES_NAME))
     if get_list_runtimes.status_code == 200:
         list_runtimes = get_list_runtimes.json()
         # print(type(list_runtimes))
         for elem in list_runtimes["rows"]:
-            get_runtime = requests.get(config.COUCH_DB_BASE + "/" + config.DB_RUNTIMES_NAME + "/" + elem["id"])
+            get_runtime = requests.get("{}/{}/{}".format(config.COUCH_DB_BASE,
+                                                         config.DB_RUNTIMES_NAME,
+                                                         elem["id"]))
             if get_runtime.status_code == 200:
-                runtimes.append(get_runtime.json())
+                known_runtimes.append(get_runtime.json())
     else:
         print("Error, unable to get any runtime!!!")
-    assert len(runtimes) > 0
-    return runtimes
+    assert len(known_runtimes) > 0
+    return known_runtimes
+
 
 if __name__ == "__main__":
 
@@ -238,9 +242,16 @@ if __name__ == "__main__":
          acquisition.__acquire__("https://github.com/ste23droid/A3E-OpenWhisk-face-detection/")
          print(get_metrics("guest/ste23droid/faceDetection"))
          # acquisition.__acquire__("https://github.com/ste23droid/A3E-OpenWhisk-neural-transfer/")
+
+         # run Websocket server
+         websocketserver = A3EWebsocketServerProtocol()
+         websocketserver.start()
+
+         # run Flask REST API
          app.run(host=config.FLASK_HOST_IP, port=config.FLASK_PORT, debug=False)
+
          t.sleep(config.DEFAULT_EXECUTION_TIME)
-        # awareness.stop()
-        # acquisition.stop()
+         # awareness.stop()
+         # websocketserver.stop()
     else:
-        print("Runtimes not ready, aborting...")
+        print("A3E Domain Manager not ready, aborting...")

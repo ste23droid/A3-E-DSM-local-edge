@@ -29,4 +29,4 @@ function (keys, values, rereduce) {
           "count":count,
           "total":total,
           "sqrTotal":sqrTotal};
-};
+}

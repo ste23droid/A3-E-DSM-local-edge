@@ -33,13 +33,14 @@ DEFAULT_RUNTIME_JSON = "{\"name\": \"ste23/whisk-python2action-alpine-opencv-num
 APPLICATION_JSON_HEADER = {"Content-Type": "application/json"}
 
 CONFIG_FILE_NAME = "a3e_config.json"
-# use wsk property get -i to get this information
+# use "wsk property get -i" to get this information
 WHISK_NAMESPACE = "guest"
 WHISK_API_HOST = "192.168.1.214"
 WHISK_API_VERSION = "v1"
-# whick wsk
+# modify wsk path with the content returned by "which wsk" command
 WSK_PATH = "/Users/stefano/Desktop/incubator-openwhisk-devtools/docker-compose/openwhisk-src/bin/wsk"
 
 REPOS_PATH = "./repositories"
-WEBSOCKET_ENDPOINT = "wss://whisknamespace/"
+WEBSOCKET_HOST = "127.0.0.1"
+WEBSOCKET_PORT = "12323"
 
