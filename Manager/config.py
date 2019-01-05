@@ -21,8 +21,8 @@ DB_METRICS_VIEW_NAME = "runtime_metrics"
 FLASK_HOST_IP = "192.168.1.214"
 FLASK_PORT = 5050
 FLASK_URL = "http://{}:{}".format(FLASK_HOST_IP, FLASK_PORT)
-FLASK_IDENTIFICATION_URL = FLASK_URL + "/identification"
-FLASK_MONITORING_URL = FLASK_URL + "/monitoring"
+FLASK_IDENTIFICATION_URL = "{}/identification".format(FLASK_URL)
+FLASK_MONITORING_URL = "{}/monitoring".format(FLASK_URL)
 
 DEFAULT_RUNTIME_JSON = "{\"name\": \"ste23/whisk-python2action-alpine-opencv-numpy:mac\", \
                            \"language\": \"python\",  \

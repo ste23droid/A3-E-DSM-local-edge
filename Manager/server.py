@@ -37,6 +37,7 @@ def monitoring():
     content = request.json
     # get list of installed actions from openwhisk
     whisk_actions_list = check_output("{} action list -i".format(config.WSK_PATH)).splitlines()[1:]
+    print(whisk_actions_list)
 
     response_items = []
     for repo in content["functions"]:

@@ -1,11 +1,10 @@
 import os
 import json
 import re
-from subprocess import call
+from subprocess import call, check_output
 from function import Function
 import config
 import requests
-
 
 class Acquisition:
 
@@ -33,7 +32,6 @@ class Acquisition:
                }
 
     def __acquire__(self, func_repo):
-        # return True
         splits = func_repo.split('/')
         # https://github.com/ste23droid/A3E-OpenWhisk-face-detection
         repo_owner = splits[3]
@@ -43,21 +41,31 @@ class Acquisition:
         path_exists = os.path.exists("{}/{}/{}".format(config.REPOS_PATH, repo_owner, repo_name))
         if not path_exists:
             print('Acquisition result: ', self.__clone_repo(repo_owner, func_repo))
+            need_wsk_update = True
         else:
             print(func_repo + ' already acquired, checking for updates')
-            print('Update result: ', self.__update_repo(repo_owner, repo_name, func_repo))
+            need_wsk_update = self.__update_repo(repo_owner, repo_name, func_repo)
 
         # check config
         parsed_function = self.__parse_config__(repo_owner, repo_name, func_repo)
         if parsed_function is not None:
-             # try to create function on openwhisk
-             install_result = self.__perform_installation(parsed_function)
-             if install_result != self.INSTALL_FAILED:
+             if need_wsk_update:
+                 # update function on wsk
+                 install_result = self.__perform_installation(parsed_function)
+                 if install_result != self.INSTALL_FAILED:
+                     return {
+                         "function": parsed_function.repo,
+                         "compatible": True,
+                         "name": "{}/{}".format(parsed_function.repo_owner, parsed_function.name)
+                     }
+             else:
+                 # just return function
                  return {
                      "function": parsed_function.repo,
                      "compatible": True,
                      "name": "{}/{}".format(parsed_function.repo_owner, parsed_function.name)
                  }
+
         return {
                   "function": func_repo,
                   "compatible": False
@@ -73,8 +81,12 @@ class Acquisition:
     def __update_repo(self, repo_owner, repo_name, repo_url):
         # TODO mettere cartelle per namespace utente
         print('Updating repo {}'.format(repo_url))
-        return call("cd {}/{}/{}; ".format(config.REPOS_PATH, repo_owner, repo_name) +
-                    "git pull origin master ", shell=True)
+
+        result = check_output("cd {}/{}/{}; ".format(config.REPOS_PATH, repo_owner, repo_name) +
+                              "git pull origin master ", shell=True).splitlines()[0]
+        if result == b'Already up to date.':
+            return False
+        return True
 
     def __parse_config__(self, repo_owner, repo_name, func_repo):
         print('Checking for A3E config file in repo')
