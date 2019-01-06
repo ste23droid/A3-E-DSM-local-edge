@@ -88,7 +88,7 @@ class Acquisition:
         return False
 
     def __is_compatible_with_domain(self, parsed_function):
-        # todo: improve in future release
+
         return True
 
     def __clone_repo(self, repo_owner, repo_url):

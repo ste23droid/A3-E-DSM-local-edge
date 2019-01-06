@@ -28,7 +28,7 @@ def identification():
     # print("Received Identification Request from ip: " + client_ip)
     # print("Received Identification json: " + str(content))
     response_json = acquisition.__parse_request__(content)
-    print(response_json)
+    # print(response_json)
     return Response(json.dumps(response_json), mimetype='application/json')
 
 
@@ -49,7 +49,7 @@ def monitoring():
     if len(parsed_action_list) > 0:
         for repo in content["functions"]:
             # action name on OpenWhisk: /guest/ste23droid/faceDetection
-            action_name = acquisition.map_repo_to_action_name[repo]
+            action_name = acquisition.map_repo_to_action_name.get(repo, None)
             # in any case we should retrieve metrics to update them on the client
             exec_time = get_metrics(action_name)
 

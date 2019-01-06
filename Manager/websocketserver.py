@@ -54,9 +54,12 @@ class A3EWebsocketServerProtocol(WebSocketServerProtocol):
         print("Websocket received a message")
         if not isBinary:
             request_json = json.loads(payload.decode('utf8'))
+            print("Content of received JSON " + request_json["function"])
+
             try:
                 response = await self.handleRequest(request_json)
             except Exception as e:
+                print(f"Exception on websocket request handling..., {e}")
                 self.sendClose(1000, "Exception raised: {0}".format(e))
             else:
                 # the response should be returned in UTF-8 encoding
@@ -71,9 +74,9 @@ class A3EWebsocketServerProtocol(WebSocketServerProtocol):
 
     async def onClose(self, wasClean, code, reason):
         print("Connection with client closed")
-        print("wasClean: {}".format(wasClean))
-        print("code: " + code)
-        print("reason: " + reason)
+        print(f"wasClean: {wasClean}")
+        print(f"code: {code}")
+        print(f"reason: {reason}")
 
 
     def __run_loop(self, loop):
