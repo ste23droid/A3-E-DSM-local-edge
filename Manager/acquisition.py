@@ -40,46 +40,56 @@ class Acquisition:
         repo_name = splits[4]
         print('Checking Acquisition of {}'.format(func_repo))
 
-        path_exists = os.path.exists("{}/{}/{}".format(config.REPOS_PATH, repo_owner, repo_name))
-        if not path_exists:
-            print('Acquisition result: ', self.__clone_repo(repo_owner, func_repo))
-            git_repo_has_changed = True
-        else:
-            print(func_repo + ' already acquired, checking for updates')
-            git_repo_has_changed = self.__need_update_repo(repo_owner, repo_name, func_repo)
+        if not self.__repo_blacklisted(func_repo):
+            path_exists = os.path.exists("{}/{}/{}".format(config.REPOS_PATH, repo_owner, repo_name))
+            if not path_exists:
+                print('Acquisition result: ', self.__clone_repo(repo_owner, func_repo))
+                git_repo_has_changed = True
+            else:
+                print(func_repo + ' already acquired, checking for updates')
+                git_repo_has_changed = self.__need_update_repo(repo_owner, repo_name, func_repo)
 
-        # check config
-        parsed_function = self.__parse_config__(repo_owner, repo_name, func_repo)
-        if parsed_function is not None:
+            # check config
+            parsed_function = self.__parse_config__(repo_owner, repo_name, func_repo)
 
-             if git_repo_has_changed or not self.__is_function_installed(parsed_function):
-                 # update function on wsk
-                 install_result = self.__perform_installation(parsed_function)
-                 if install_result != self.INSTALL_FAILED:
+            if parsed_function is not None and self.__is_compatible_with_domain(parsed_function):
+
+                 if git_repo_has_changed or not self.__is_function_installed(parsed_function):
+                     # update function on wsk
+                     install_result = self.__perform_installation(parsed_function)
+                     if install_result != self.INSTALL_FAILED:
+                         return {
+                             "function": parsed_function.repo,
+                             "compatible": True,
+                             "name": "{}/{}".format(parsed_function.repo_owner, parsed_function.name)
+                         }
+                     else:
+                         # install failed, remove repository folder
+                         repositories_parent_dir = dirname(abspath(__file__))
+                         repo_dir = join(join(repositories_parent_dir, "repositories"),
+                                         "{}/{}".format(parsed_function.repo_owner, parsed_function.repo_name))
+                         call(f"rm -rf {repo_dir}", shell=True)
+
+                 else:
+                     # just return function
                      return {
                          "function": parsed_function.repo,
                          "compatible": True,
                          "name": "{}/{}".format(parsed_function.repo_owner, parsed_function.name)
                      }
-                 else:
-                     # install failed, remove repository folder
-                     repositories_parent_dir = dirname(abspath(__file__))
-                     repo_dir = join(join(repositories_parent_dir, "repositories"),
-                                     "{}/{}".format(parsed_function.repo_owner, parsed_function.repo_name))
-                     call(f"rm -rf {repo_dir}", shell=True)
-
-             else:
-                 # just return function
-                 return {
-                     "function": parsed_function.repo,
-                     "compatible": True,
-                     "name": "{}/{}".format(parsed_function.repo_owner, parsed_function.name)
-                 }
 
         return {
                   "function": func_repo,
                   "compatible": False
                }
+
+    def __repo_blacklisted(self, repo):
+        # todo: improve in future release
+        return False
+
+    def __is_compatible_with_domain(self, parsed_function):
+        # todo: improve in future release
+        return True
 
     def __clone_repo(self, repo_owner, repo_url):
         print('Cloning repo {}'.format(repo_url))
