@@ -36,29 +36,38 @@ def identification():
 def monitoring():
     content = request.json
     # get list of installed actions from openwhisk
-    whisk_actions_list = check_output("{} action list -i".format(config.WSK_PATH)).splitlines()[1:]
-    print(whisk_actions_list)
+    raw_actions_list = check_output("{} action list -i".format(config.WSK_PATH), shell=True).splitlines()[1:]
+    # print(raw_actions_list)
+
+    parsed_action_list = []
+    for raw_action_name in raw_actions_list:
+        parsed_action_list.append(raw_action_name.split()[0].decode("utf-8"))
+
+    # print(parsed_action_list)
 
     response_items = []
-    for repo in content["functions"]:
-        # action name on OpenWhisk: guest/ste23droid/faceDetection
-        action_name = acquisition.map_repo_to_action_name[repo]
-        # in any case we should retrieve metrics to update them on the client
-        exec_time = get_metrics(action_name)
+    if len(parsed_action_list) > 0:
+        for repo in content["functions"]:
+            # action name on OpenWhisk: /guest/ste23droid/faceDetection
+            action_name = acquisition.map_repo_to_action_name[repo]
+            # in any case we should retrieve metrics to update them on the client
+            exec_time = get_metrics(action_name)
 
-        if action_name is not None and action_name in whisk_actions_list:
-            status = "available"
-        else:
-            status = "unavailable"
+            if action_name is not None and action_name in parsed_action_list:
+                print("Action {} available".format(action_name))
+                status = "available"
+            else:
+                status = "unavailable"
 
-        # there are actual metrics to send to the client
-        if exec_time is not None:
-            response_items.append({"repo": repo,
-                                   "status": status,
-                                   "execTime": exec_time})
-        else:
-            response_items.append({"repo": repo,
-                                   "status": status})
+            # there are actual metrics to send to the client
+            if exec_time is not None:
+                response_items.append({"repo": repo,
+                                       "status": status,
+                                       "execTime": exec_time})
+            else:
+                response_items.append({"repo": repo,
+                                       "status": status})
+
     json_response = {"monitorings": response_items}
     return Response(json.dumps(json_response), mimetype='application/json')
 
@@ -100,6 +109,7 @@ def invoke():
 
 
 def get_metrics(action_name):
+    # todo: see if we can get metrics for all the actions at one, using the same key with multiple values
     # action name : guest/ste23droid/faceDetection
     action_name = re.sub("/", "_", action_name)
     # action_metrics_db_name = "{}_{}_{}".format(config.DB_METRICS_BASE_NAME,
@@ -241,7 +251,7 @@ if __name__ == "__main__":
          awareness.start()
          acquisition = Acquisition(runtimes)
          # acquisition.__acquire__("https://github.com/ste23droid/A3E-OpenWhisk-image-recognition/")
-         acquisition.__acquire__("https://github.com/ste23droid/A3E-OpenWhisk-face-detection/")
+         # acquisition.__acquire__("https://github.com/ste23droid/A3E-OpenWhisk-face-detection/")
          # print(get_metrics("guest/ste23droid/faceDetection"))
          # acquisition.__acquire__("https://github.com/ste23droid/A3E-OpenWhisk-neural-transfer/")
 

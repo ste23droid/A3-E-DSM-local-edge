@@ -5,6 +5,8 @@ from subprocess import call, check_output
 from function import Function
 import config
 import requests
+from os.path import dirname, abspath, join
+
 
 class Acquisition:
 
@@ -41,15 +43,16 @@ class Acquisition:
         path_exists = os.path.exists("{}/{}/{}".format(config.REPOS_PATH, repo_owner, repo_name))
         if not path_exists:
             print('Acquisition result: ', self.__clone_repo(repo_owner, func_repo))
-            need_wsk_update = True
+            git_repo_has_changed = True
         else:
             print(func_repo + ' already acquired, checking for updates')
-            need_wsk_update = self.__update_repo(repo_owner, repo_name, func_repo)
+            git_repo_has_changed = self.__need_update_repo(repo_owner, repo_name, func_repo)
 
         # check config
         parsed_function = self.__parse_config__(repo_owner, repo_name, func_repo)
         if parsed_function is not None:
-             if need_wsk_update:
+
+             if git_repo_has_changed or not self.__is_function_installed(parsed_function):
                  # update function on wsk
                  install_result = self.__perform_installation(parsed_function)
                  if install_result != self.INSTALL_FAILED:
@@ -58,6 +61,13 @@ class Acquisition:
                          "compatible": True,
                          "name": "{}/{}".format(parsed_function.repo_owner, parsed_function.name)
                      }
+                 else:
+                     # install failed, remove repository folder
+                     repositories_parent_dir = dirname(abspath(__file__))
+                     repo_dir = join(join(repositories_parent_dir, "repositories"),
+                                     "{}/{}".format(parsed_function.repo_owner, parsed_function.repo_name))
+                     call(f"rm -rf {repo_dir}", shell=True)
+
              else:
                  # just return function
                  return {
@@ -77,14 +87,26 @@ class Acquisition:
                     "cd {}/{}; ".format(config.REPOS_PATH, repo_owner) +
                     "git clone {} ".format(repo_url), shell=True)
 
+    def __is_function_installed(self, parsed_function):
+        raw_actions_list = check_output("{} action list -i".format(config.WSK_PATH), shell=True).splitlines()[1:]
+        parsed_action_list = []
+        for raw_action_name in raw_actions_list:
+            parsed_action_list.append(raw_action_name.split()[0].decode("utf-8"))
+        installed_func_name = "/{}/{}/{}".format(config.WHISK_NAMESPACE, parsed_function.repo_owner, parsed_function.name)
+        if installed_func_name in parsed_action_list:
+            print(f"Function {installed_func_name} is already installed!!!")
+            return True
+        return False
 
-    def __update_repo(self, repo_owner, repo_name, repo_url):
+    def __need_update_repo(self, repo_owner, repo_name, repo_url):
         # TODO mettere cartelle per namespace utente
         print('Updating repo {}'.format(repo_url))
 
         result = check_output("cd {}/{}/{}; ".format(config.REPOS_PATH, repo_owner, repo_name) +
                               "git pull origin master ", shell=True).splitlines()[0]
-        if result == b'Already up to date.':
+        # b'Already up to date.' in python 3.6
+        if result.decode("utf-8") == 'Already up to date.':
+            print('Already up to date.')
             return False
         return True
 
@@ -114,7 +136,7 @@ class Acquisition:
                     func_path = os.path.join(repo_directory, json_content["path"])
 
                     # save mapping repo to action name
-                    self.map_repo_to_action_name[func_repo] = "{}/{}/{}".format(config.WHISK_NAMESPACE, repo_owner, func_name)
+                    self.map_repo_to_action_name[func_repo] = "/{}/{}/{}".format(config.WHISK_NAMESPACE, repo_owner, func_name)
 
                     return Function(func_name, func_repo, repo_owner, repo_name, func_path, runtime, runtime_version,
                                     func_dependencies, memory, authenticated, func_json_param_name)

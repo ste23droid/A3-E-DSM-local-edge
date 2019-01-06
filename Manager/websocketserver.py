@@ -6,6 +6,7 @@ import threading
 import requests
 import time as t
 
+
 class A3EWebsocketServerProtocol(WebSocketServerProtocol):
 
     def __init__(self):
@@ -13,8 +14,6 @@ class A3EWebsocketServerProtocol(WebSocketServerProtocol):
         self.wsthread = threading.Thread(target=self.__run_loop, args=(self.loop,))
         self.factory = WebSocketServerFactory(u"ws://{}:{}".format(config.WEBSOCKET_HOST, config.WEBSOCKET_PORT))
         self.factory.protocol = A3EWebsocketServerProtocol
-
-
 
 
     async def handleRequest(self, json_request):
