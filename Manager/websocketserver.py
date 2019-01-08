@@ -10,6 +10,7 @@ import time as t
 class A3EWebsocketServerProtocol(WebSocketServerProtocol):
 
     def __init__(self):
+        super().__init__
         self.loop = asyncio.get_event_loop()
         self.wsthread = threading.Thread(target=self.__run_loop, args=(self.loop,))
         self.factory = WebSocketServerFactory(u"ws://{}:{}".format(config.WEBSOCKET_HOST, config.WEBSOCKET_PORT))
@@ -17,6 +18,7 @@ class A3EWebsocketServerProtocol(WebSocketServerProtocol):
 
 
     async def handleRequest(self, json_request):
+
         start = t.time()
         json_message = json.dumps(json_request)
         loop = asyncio.get_event_loop()
@@ -50,24 +52,86 @@ class A3EWebsocketServerProtocol(WebSocketServerProtocol):
 
         return exec_response.content
 
+    # async def handleRequest(self, json_request):
+    #     start = t.time()
+    #     json_message = json.dumps(json_request)
+    #     loop = asyncio.get_event_loop()
+    #
+    #     # https://stackoverflow.com/questions/22190403/how-could-i-use-requests-in-asyncio
+    #     # https://stackoverflow.com/questions/23946895/requests-in-asyncio-keyword-arguments
+    #     def wrap_exec_request(request_json, message_json):
+    #         return requests.post(
+    #             "https://{}/api/v1/web/guest/{}".format(config.WHISK_API_HOST, "ste23droid/faceDetection"),
+    #             data=message_json,
+    #             verify=False,
+    #             headers=config.APPLICATION_JSON_HEADER)
+    #
+    #     def wrap_db_request(request_json, message_json, start_time):
+    #         return requests.post("{}/{}".format(config.COUCH_DB_BASE, config.DB_METRICS_NAME),
+    #                              data=json.dumps({"function": "ste23droid/faceDetection",
+    #                                               "execMs": (t.time() - start_time) * 1000,
+    #                                               "payloadBytes": len(message_json)}),
+    #                              verify=False,
+    #                              headers=config.APPLICATION_JSON_HEADER)
+    #
+    #     future_exec_response = loop.run_in_executor(None, lambda: wrap_exec_request(request_json=json_request,
+    #                                                                                 message_json=json_message))
+    #     exec_response = await future_exec_response
+    #
+    #     # add action execution metrics to the metrics db
+    #     future_db_response = loop.run_in_executor(None, lambda: wrap_db_request(request_json=json_request,
+    #                                                                             message_json=json_message,
+    #                                                                             start_time=start))
+    #     await future_db_response
+    #
+    #     return exec_response.content
+
     async def onMessage(self, payload, isBinary):
         print("Websocket received a message")
         if not isBinary:
             request_json = json.loads(payload.decode('utf8'))
-            print("Content of received JSON " + request_json["function"])
-
-            try:
-                response = await self.handleRequest(request_json)
-            except Exception as e:
-                print(f"Exception on websocket request handling..., {e}")
-                self.sendClose(1000, "Exception raised: {0}".format(e))
+            if "function" in request_json:
+                try:
+                    response = await self.handleRequest(request_json)
+                except Exception as e:
+                    print(f"Exception on websocket request handling..., {e}")
+                    self.sendClose(1000, "Exception raised: {0}".format(e))
+                else:
+                    # the response should be returned in UTF-8 encoding
+                    print("Websocket server sending response")
+                    self.sendMessage(response)
             else:
-                # the response should be returned in UTF-8 encoding
-                print("Websocket sending response")
-                self.sendMessage(response)
+                self.sendMessage("Error, request not containing function endpoint")
         else:
             print("A binary message was received from the client, ignoring it ...")
             self.sendClose(1000)
+
+    # async def onMessage(self, payload, isBinary):
+    #     print("Websocket received a message")
+    #     if not isBinary:
+    #         request_json = json.loads(payload.decode('utf8'))
+    #
+    #         try:
+    #             response = await self.handleRequest(request_json)
+    #         except Exception as e:
+    #             print(f"Exception on websocket request handling..., {e}")
+    #             self.sendClose(1000, "Exception raised: {0}".format(e))
+    #         else:
+    #             # the response should be returned in UTF-8 encoding
+    #             print("Websocket sending response")
+    #             self.sendMessage(response)
+    #     else:
+    #         print("A binary message was received from the client, ignoring it ...")
+    #         self.sendClose(1000)
+
+    # async def onMessage(self, payload, isBinary):
+    #     print("Websocket received a message")
+    #     if not isBinary:
+    #         print("Websocket sending response")
+    #         self.sendMessage(payload)
+    #     else:
+    #         print("A binary message was received from the client, ignoring it ...")
+    #         self.sendClose(1000)
 
     async def onConnect(self, request):
         print("A client connected to A3E Websocket")

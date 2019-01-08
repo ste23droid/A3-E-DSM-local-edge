@@ -1,4 +1,5 @@
 import time as t
+import argparse
 import requests
 import json
 import re
@@ -244,11 +245,58 @@ def get_runtimes():
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--host-ip',
+                        type=str,
+                        default=config.HOST_IP,
+                        help='The public ip of this machine where tu run A3E Flask REST API and A3E Websocket Server')
+
+    parser.add_argument('--couch-db-user',
+                        type=str,
+                        default=config.COUCH_DB_WHISK_DEFAULT_USER,
+                        help='The username of the CouchDB admin user on OpenWhisk')
+
+    parser.add_argument('--couch-db-pass',
+                        type=str,
+                        default=config.COUCH_DB_WHISK_DEFAULT_PASSWORD,
+                        help='The password of the CouchDB admin user on OpenWhisk')
+
+    parser.add_argument('--node-type',
+                        type=str,
+                        default=config.NODE_TYPE,
+                        help='The node type of this installation')
+
+    parser.add_argument('--wsk-path',
+                        type=str,
+                        default=config.WSK_PATH,
+                        help='Path of the wsk command of the OpenWhisk installation to use')
+
+    parsed, unparsed = parser.parse_known_args()
+
+    if parsed.host_ip is not None:
+        config.HOST_IP = parsed.host_ip
+        config.FLASK_HOST_IP = parsed.host_ip
+        config.WEBSOCKET_HOST = parsed.host_ip
+
+    if parsed.couch_db_user is not None:
+        config.COUCH_DB_WHISK_DEFAULT_USER = parsed.couch_db_user
+
+    if parsed.couch_db_pass is not None:
+        config.COUCH_DB_WHISK_DEFAULT_PASSWORD = parsed.couch_db_pass
+
+    if parsed.node_type is not None:
+        config.NODE_TYPE = parsed.node_type
+
+    if parsed.wsk_path is not None:
+        config.WSK_PATH = parsed.wsk_path
 
     if runtimes_ready() and is_metrics_db_ready() and are_db_views_ready():
          runtimes = get_runtimes()
-         awareness = Awareness()
-         awareness.start()
+
+         if parsed.node_type == "local-edge":
+            awareness = Awareness()
+            awareness.start()
+
          acquisition = Acquisition(runtimes)
          # acquisition.__acquire__("https://github.com/ste23droid/A3E-OpenWhisk-image-recognition/")
          # acquisition.__acquire__("https://github.com/ste23droid/A3E-OpenWhisk-face-detection/")
@@ -263,7 +311,9 @@ if __name__ == "__main__":
          app.run(host=config.FLASK_HOST_IP, port=config.FLASK_PORT, debug=False)
 
          t.sleep(config.DEFAULT_EXECUTION_TIME)
-         # awareness.stop()
-         # websocketserver.stop()
+         if awareness is not None:
+            awareness.stop()
+
+         websocketserver.stop()
     else:
         print("A3E Domain Manager not ready, aborting...")

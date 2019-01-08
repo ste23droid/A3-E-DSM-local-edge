@@ -30,7 +30,7 @@ class Acquisition:
         return {
                 "identifications": identifications,
                 "monitoringEndpoint": config.FLASK_MONITORING_URL,
-                "websocketEndpoint": "ws://{}:{}".format(config.WEBSOCKET_HOST, config.WEBSOCKET_PORT)
+                "websocketEndpoint": "ws://{}:{}/".format(config.WEBSOCKET_HOST, config.WEBSOCKET_PORT)
                }
 
     def __acquire__(self, func_repo):
