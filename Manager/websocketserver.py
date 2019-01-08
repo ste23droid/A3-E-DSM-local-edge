@@ -13,7 +13,7 @@ class A3EWebsocketServerProtocol(WebSocketServerProtocol):
         super().__init__
         self.loop = asyncio.get_event_loop()
         self.wsthread = threading.Thread(target=self.__run_loop, args=(self.loop,))
-        self.factory = WebSocketServerFactory(u"ws://{}:{}".format(config.WEBSOCKET_HOST, config.WEBSOCKET_PORT))
+        self.factory = WebSocketServerFactory("ws://{}:{}".format(config.PRIVATE_HOST_IP, config.WEBSOCKET_PORT).encode())
         self.factory.protocol = A3EWebsocketServerProtocol
 
 
@@ -27,7 +27,7 @@ class A3EWebsocketServerProtocol(WebSocketServerProtocol):
         # https://stackoverflow.com/questions/23946895/requests-in-asyncio-keyword-arguments
         def wrap_exec_request(request_json, message_json):
             return requests.post(
-                "https://{}/api/v1/web/guest/{}".format(config.WHISK_API_HOST, request_json["function"]),
+                "https://{}/api/v1/web/guest/{}".format(config.PRIVATE_HOST_IP, request_json["function"]),
                                                         data=message_json,
                                                         verify=False,
                                                         headers=config.APPLICATION_JSON_HEADER)
@@ -146,7 +146,7 @@ class A3EWebsocketServerProtocol(WebSocketServerProtocol):
     def __run_loop(self, loop):
         asyncio.set_event_loop(loop)
         # https://stackoverflow.com/questions/26270681/can-an-asyncio-event-loop-run-in-the-background-without-suspending-the-python-in
-        coro = loop.create_server(self.factory, config.WEBSOCKET_HOST, config.WEBSOCKET_PORT)
+        coro = loop.create_server(self.factory, config.PRIVATE_HOST_IP, config.WEBSOCKET_PORT)
         server = loop.run_until_complete(coro)
 
         try:

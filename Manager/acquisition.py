@@ -29,8 +29,8 @@ class Acquisition:
             identifications.append(self.__acquire__(func_repo))
         return {
                 "identifications": identifications,
-                "monitoringEndpoint": config.FLASK_MONITORING_URL,
-                "websocketEndpoint": "ws://{}:{}/".format(config.WEBSOCKET_HOST, config.WEBSOCKET_PORT)
+                "monitoringEndpoint": "http://{}:{}/monitoring".format(config.PUBLIC_HOST_IP, config.FLASK_PORT),
+                "websocketEndpoint": "ws://{}:{}/".format(config.PUBLIC_HOST_IP, config.WEBSOCKET_PORT)
                }
 
     def __acquire__(self, func_repo):
@@ -88,7 +88,6 @@ class Acquisition:
         return False
 
     def __is_compatible_with_domain(self, parsed_function):
-
         return True
 
     def __clone_repo(self, repo_owner, repo_url):
@@ -237,13 +236,13 @@ class Acquisition:
     def __get_function_endpoint(self, func):
         # https://github.com/apache/incubator-openwhisk/blob/master/docs/rest_api.md
         if not func.authenticated:
-          return "https://{}/api/{}/web/{}/{}/{}".format(config.WHISK_API_HOST,
+          return "https://{}/api/{}/web/{}/{}/{}".format(config.PRIVATE_HOST_IP,
                                                          config.WHISK_API_VERSION,
                                                          config.WHISK_NAMESPACE,
                                                          func.repo_owner,
                                                          func.name)
 
-        return "https://{}/api/{}/namespaces/{}/actions/{}/{}".format(config.WHISK_API_HOST,
+        return "https://{}/api/{}/namespaces/{}/actions/{}/{}".format(config.PRIVATE_HOST_IP,
                                                                       config.WHISK_API_VERSION,
                                                                       config.WHISK_NAMESPACE,
                                                                       func.repo_owner,

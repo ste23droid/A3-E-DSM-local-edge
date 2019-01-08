@@ -86,7 +86,7 @@ def invoke():
                                                                    # content["function"],
                                                                    # content["image"]), shell=True)
     json_message = json.dumps(content)
-    response = requests.post("https://{}/api/v1/web/guest/{}".format(config.WHISK_API_HOST, content["function"]),
+    response = requests.post("https://{}/api/v1/web/guest/{}".format(config.PRIVATE_HOST_IP, content["function"]),
                                      data=json_message,
                                      verify=False,
                                      headers=config.APPLICATION_JSON_HEADER)
@@ -246,19 +246,29 @@ def get_runtimes():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--host-ip',
+    parser.add_argument('--private-host-ip',
                         type=str,
-                        default=config.HOST_IP,
-                        help='The public ip of this machine where tu run A3E Flask REST API and A3E Websocket Server')
+                        default=config.PRIVATE_HOST_IP,
+                        help='The private ip of this machine in the local network')
+
+    parser.add_argument('--broadcast-ip',
+                        type=str,
+                        default=config.BROADCAST_IP,
+                        help='The broadcast ip of the local network')
+
+    parser.add_argument('--public-host-ip',
+                        type=str,
+                        default=config.PUBLIC_HOST_IP,
+                        help='The public ip of this machine')
 
     parser.add_argument('--couch-db-user',
                         type=str,
-                        default=config.COUCH_DB_WHISK_DEFAULT_USER,
+                        default=config.COUCH_DB_WHISK_ADMIN_USER,
                         help='The username of the CouchDB admin user on OpenWhisk')
 
     parser.add_argument('--couch-db-pass',
                         type=str,
-                        default=config.COUCH_DB_WHISK_DEFAULT_PASSWORD,
+                        default=config.COUCH_DB_WHISK_ADMIN_PASSWORD,
                         help='The password of the CouchDB admin user on OpenWhisk')
 
     parser.add_argument('--node-type',
@@ -271,18 +281,19 @@ if __name__ == "__main__":
                         default=config.WSK_PATH,
                         help='Path of the wsk command of the OpenWhisk installation to use')
 
-    parsed, unparsed = parser.parse_known_args()
+    parsed, ignored = parser.parse_known_args()
 
-    if parsed.host_ip is not None:
-        config.HOST_IP = parsed.host_ip
-        config.FLASK_HOST_IP = parsed.host_ip
-        config.WEBSOCKET_HOST = parsed.host_ip
+    if parsed.private_host_ip is not None:
+        config.PRIVATE_HOST_IP = parsed.private_host_ip
+
+    if parsed.public_host_ip is not None:
+        config.PUBLIC_HOST_IP = parsed.public_host_ip
 
     if parsed.couch_db_user is not None:
-        config.COUCH_DB_WHISK_DEFAULT_USER = parsed.couch_db_user
+        config.COUCH_DB_WHISK_ADMIN_USER = parsed.couch_db_user
 
     if parsed.couch_db_pass is not None:
-        config.COUCH_DB_WHISK_DEFAULT_PASSWORD = parsed.couch_db_pass
+        config.COUCH_DB_WHISK_ADMIN_PASSWORD = parsed.couch_db_pass
 
     if parsed.node_type is not None:
         config.NODE_TYPE = parsed.node_type
@@ -308,7 +319,7 @@ if __name__ == "__main__":
          websocketserver.start()
 
          # run Flask REST API
-         app.run(host=config.FLASK_HOST_IP, port=config.FLASK_PORT, debug=False)
+         app.run(host=config.PRIVATE_HOST_IP, port=config.FLASK_PORT, debug=False)
 
          t.sleep(config.DEFAULT_EXECUTION_TIME)
          if awareness is not None:
