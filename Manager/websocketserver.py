@@ -13,7 +13,7 @@ class A3EWebsocketServerProtocol(WebSocketServerProtocol):
         super().__init__
         self.loop = asyncio.get_event_loop()
         self.wsthread = threading.Thread(target=self.__run_loop, args=(self.loop,))
-        self.factory = WebSocketServerFactory("ws://{}:{}".format(config.PRIVATE_HOST_IP, config.WEBSOCKET_PORT).encode())
+        self.factory = WebSocketServerFactory(u"ws://{}:{}".format(config.PRIVATE_HOST_IP, config.WEBSOCKET_PORT))
         self.factory.protocol = A3EWebsocketServerProtocol
 
 
