@@ -16,10 +16,16 @@ class A3EWebsocketServerProtocol(WebSocketServerProtocol):
         self.factory = WebSocketServerFactory(u"ws://{}:{}".format(config.PRIVATE_HOST_IP, config.WEBSOCKET_PORT))
         self.factory.protocol = A3EWebsocketServerProtocol
 
+    async def wrap_db_request(self, request_json, message_json, delta_time):
+        return requests.post("{}/{}".format(config.COUCH_DB_BASE, config.DB_METRICS_NAME),
+                             data=json.dumps({"function": request_json["function"],
+                                              "execMs": delta_time,
+                                              "payloadBytes": len(message_json)}),
+                             verify=False,
+                             headers=config.APPLICATION_JSON_HEADER)
 
     async def handleRequest(self, json_request):
 
-        start = t.time()
         json_message = json.dumps(json_request)
         loop = asyncio.get_event_loop()
 
@@ -32,23 +38,18 @@ class A3EWebsocketServerProtocol(WebSocketServerProtocol):
                                                         verify=False,
                                                         headers=config.APPLICATION_JSON_HEADER)
 
-        def wrap_db_request(request_json, message_json, start_time):
-            return requests.post("{}/{}".format(config.COUCH_DB_BASE, config.DB_METRICS_NAME),
-                          data=json.dumps({"function": request_json["function"],
-                                           "execMs": (t.time() - start_time) * 1000,
-                                           "payloadBytes": len(message_json)}),
-                          verify=False,
-                          headers=config.APPLICATION_JSON_HEADER)
-
+        start = t.time()
         future_exec_response = loop.run_in_executor(None, lambda: wrap_exec_request(request_json=json_request,
                                                                                     message_json=json_message))
         exec_response = await future_exec_response
+        delta_time = (t.time() - start) * 1000
+        #print(f"Time spent awaiting http response from whisk: {delta_time}")
 
-        # add action execution metrics to the metrics db
-        future_db_response = loop.run_in_executor(None, lambda: wrap_db_request(request_json=json_request,
-                                                                               message_json=json_message,
-                                                                               start_time=start))
-        await future_db_response
+        # add asynchronously action execution metrics to the metrics db
+        #db_start = t.time()
+        loop.create_task(self.wrap_db_request(json_request, json_message, delta_time))
+        #db_delta_time = (t.time() - db_start) * 1000
+        #print(f"Time spent fire and forget request to db: {db_delta_time}")
 
         return exec_response.content
 
