@@ -29,8 +29,6 @@ class A3EWebsocketServerProtocol(WebSocketServerProtocol):
         json_message = json.dumps(json_request)
         loop = asyncio.get_event_loop()
 
-        # https://stackoverflow.com/questions/22190403/how-could-i-use-requests-in-asyncio
-        # https://stackoverflow.com/questions/23946895/requests-in-asyncio-keyword-arguments
         def wrap_exec_request(request_json, message_json):
             return requests.post(
                 "https://{}/api/v1/web/guest/{}".format(config.PRIVATE_HOST_IP, request_json["function"]),
@@ -42,50 +40,18 @@ class A3EWebsocketServerProtocol(WebSocketServerProtocol):
         future_exec_response = loop.run_in_executor(None, lambda: wrap_exec_request(request_json=json_request,
                                                                                     message_json=json_message))
         exec_response = await future_exec_response
-        delta_time = (t.time() - start) * 1000
+        delta_time_millis = (t.time() - start) * 1000
         #print(f"Time spent awaiting http response from whisk: {delta_time}")
 
         # add asynchronously action execution metrics to the metrics db
         #db_start = t.time()
-        loop.create_task(self.wrap_db_request(json_request, json_message, delta_time))
+        loop.create_task(self.wrap_db_request(json_request, json_message, delta_time_millis))
         #db_delta_time = (t.time() - db_start) * 1000
         #print(f"Time spent fire and forget request to db: {db_delta_time}")
-
-        return exec_response.content
-
-    # async def handleRequest(self, json_request):
-    #     start = t.time()
-    #     json_message = json.dumps(json_request)
-    #     loop = asyncio.get_event_loop()
-    #
-    #     # https://stackoverflow.com/questions/22190403/how-could-i-use-requests-in-asyncio
-    #     # https://stackoverflow.com/questions/23946895/requests-in-asyncio-keyword-arguments
-    #     def wrap_exec_request(request_json, message_json):
-    #         return requests.post(
-    #             "https://{}/api/v1/web/guest/{}".format(config.WHISK_API_HOST, "ste23droid/faceDetection"),
-    #             data=message_json,
-    #             verify=False,
-    #             headers=config.APPLICATION_JSON_HEADER)
-    #
-    #     def wrap_db_request(request_json, message_json, start_time):
-    #         return requests.post("{}/{}".format(config.COUCH_DB_BASE, config.DB_METRICS_NAME),
-    #                              data=json.dumps({"function": "ste23droid/faceDetection",
-    #                                               "execMs": (t.time() - start_time) * 1000,
-    #                                               "payloadBytes": len(message_json)}),
-    #                              verify=False,
-    #                              headers=config.APPLICATION_JSON_HEADER)
-    #
-    #     future_exec_response = loop.run_in_executor(None, lambda: wrap_exec_request(request_json=json_request,
-    #                                                                                 message_json=json_message))
-    #     exec_response = await future_exec_response
-    #
-    #     # add action execution metrics to the metrics db
-    #     future_db_response = loop.run_in_executor(None, lambda: wrap_db_request(request_json=json_request,
-    #                                                                             message_json=json_message,
-    #                                                                             start_time=start))
-    #     await future_db_response
-    #
-    #     return exec_response.content
+        response_json = exec_response.json()
+        response_json["execTime"] = delta_time_millis
+        print(response_json)
+        return json.dumps(response_json).encode('utf-8')
 
     async def onMessage(self, payload, isBinary):
         print("Websocket received a message")
@@ -107,33 +73,6 @@ class A3EWebsocketServerProtocol(WebSocketServerProtocol):
             print("A binary message was received from the client, ignoring it ...")
             self.sendClose(1000)
 
-    # async def onMessage(self, payload, isBinary):
-    #     print("Websocket received a message")
-    #     if not isBinary:
-    #         request_json = json.loads(payload.decode('utf8'))
-    #
-    #         try:
-    #             response = await self.handleRequest(request_json)
-    #         except Exception as e:
-    #             print(f"Exception on websocket request handling..., {e}")
-    #             self.sendClose(1000, "Exception raised: {0}".format(e))
-    #         else:
-    #             # the response should be returned in UTF-8 encoding
-    #             print("Websocket sending response")
-    #             self.sendMessage(response)
-    #     else:
-    #         print("A binary message was received from the client, ignoring it ...")
-    #         self.sendClose(1000)
-
-    # async def onMessage(self, payload, isBinary):
-    #     print("Websocket received a message")
-    #     if not isBinary:
-    #         print("Websocket sending response")
-    #         self.sendMessage(payload)
-    #     else:
-    #         print("A binary message was received from the client, ignoring it ...")
-    #         self.sendClose(1000)
-
     async def onConnect(self, request):
         print("A client connected to A3E Websocket")
 
@@ -146,7 +85,6 @@ class A3EWebsocketServerProtocol(WebSocketServerProtocol):
 
     def __run_loop(self, loop):
         asyncio.set_event_loop(loop)
-        # https://stackoverflow.com/questions/26270681/can-an-asyncio-event-loop-run-in-the-background-without-suspending-the-python-in
         coro = loop.create_server(self.factory, config.PRIVATE_HOST_IP, config.WEBSOCKET_PORT)
         server = loop.run_until_complete(coro)
 

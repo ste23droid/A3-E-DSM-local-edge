@@ -309,10 +309,6 @@ if __name__ == "__main__":
             awareness.start()
 
          acquisition = Acquisition(runtimes)
-         # acquisition.__acquire__("https://github.com/ste23droid/A3E-OpenWhisk-image-recognition/")
-         # acquisition.__acquire__("https://github.com/ste23droid/A3E-OpenWhisk-face-detection/")
-         # print(get_metrics("guest/ste23droid/faceDetection"))
-         # acquisition.__acquire__("https://github.com/ste23droid/A3E-OpenWhisk-neural-transfer/")
 
          # run Websocket server
          websocketserver = A3EWebsocketServerProtocol()

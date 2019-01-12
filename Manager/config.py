@@ -53,4 +53,4 @@ WEBSOCKET_PORT = "12323"
 
 # can be "local-edge" "mobile-edge" or "cloud"
 NODE_TYPE = "cloud"
-#NODE_TYPE = "local-edge"
+# NODE_TYPE = "local-edge"
