@@ -50,7 +50,7 @@ class A3EWebsocketServerProtocol(WebSocketServerProtocol):
         #print(f"Time spent fire and forget request to db: {db_delta_time}")
         response_json = exec_response.json()
         response_json["execTime"] = delta_time_millis
-        print(response_json)
+        # print(response_json)
         return json.dumps(response_json).encode('utf-8')
 
     async def onMessage(self, payload, isBinary):
