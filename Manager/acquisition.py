@@ -14,13 +14,7 @@ class Acquisition:
         self.INSTALL_FAILED = "install_failed"
         self.INSTALL_DONE = "install_done"
         self.runtimes = runtimes
-        self.map_repo_to_action_name = {}
         requests.packages.urllib3.disable_warnings()
-
-    # def __is_compatible(self, func_repo):
-    #     # TODO: for compatiblity we need to add open whisk about GPU support, and ram,
-    #     # TODO: compatibility should be inserted in the config a3e file defined in the app
-    #     return True
 
     def __parse_request__(self, json_content):
         functions = json_content['functions']
@@ -85,6 +79,8 @@ class Acquisition:
 
     def __repo_blacklisted(self, repo):
         # todo: improve in future release
+        # TODO: for compatiblity we need to add open whisk about GPU support, and ram,
+        # TODO: compatibility should be inserted in the config a3e file defined in the app
         return False
 
     def __is_compatible_with_domain(self, parsed_function):
@@ -108,7 +104,6 @@ class Acquisition:
         return False
 
     def __need_update_repo(self, repo_owner, repo_name, repo_url):
-        # TODO mettere cartelle per namespace utente
         print('Updating repo {}'.format(repo_url))
 
         result = check_output("cd {}/{}/{}; ".format(config.REPOS_PATH, repo_owner, repo_name) +
@@ -124,13 +119,12 @@ class Acquisition:
         # print os.path.dirname(os.path.abspath(__file__))
         repositories_directory = os.path.join(os.path.dirname(os.path.abspath(__file__)), "repositories")
         repo_directory = os.path.join(os.path.join(repositories_directory, repo_owner), repo_name)
-        print(repo_directory)
+        # print(repo_directory)
 
-        # print project_dir
         for file_name in os.listdir(repo_directory):
             if file_name == config.CONFIG_FILE_NAME:
                 file_path = os.path.join(repo_directory, file_name)
-                print(file_path)
+                # print(file_path)
                 func_dependencies = []
                 with open(file_path, mode='r') as f:
                     json_content = json.load(f)
@@ -144,11 +138,12 @@ class Acquisition:
                         func_dependencies.append(dependency)
                     func_path = os.path.join(repo_directory, json_content["path"])
 
-                    # save mapping repo to action name
-                    self.map_repo_to_action_name[func_repo] = "/{}/{}/{}".format(config.WHISK_NAMESPACE, repo_owner, func_name)
+                    # map repository url to wsk action name
+                    self.__check_mapping(repo_owner, func_name, func_repo)
 
                     return Function(func_name, func_repo, repo_owner, repo_name, func_path, runtime, runtime_version,
                                     func_dependencies, memory, authenticated, func_json_param_name)
+
         print("Error... no config file found!!!")
         return None
 
@@ -175,6 +170,61 @@ class Acquisition:
                 return True
 
         return False
+
+    def __check_mapping(self, repo_owner, func_name, func_repo):
+        # check if mapping already exists, POST /{db}/_find
+        check_mapping_request = requests.post("{}/{}/_find".format(config.COUCH_DB_BASE, config.DB_MAPPINGS_NAME),
+                                              data=json.dumps({"selector": {"repo": func_repo}}),
+                                              verify=False,
+                                              headers=config.APPLICATION_JSON_HEADER)
+        print(check_mapping_request.json())
+        if check_mapping_request.status_code == 200:
+            json_result = check_mapping_request.json()
+            if len(json_result["docs"]) > 0:
+                doc_id = json_result["docs"][0]["_id"]
+                doc_revision = json_result["docs"][0]["_rev"]
+
+                mapping = {
+                    "actionName": "/{}/{}/{}".format(config.WHISK_NAMESPACE, repo_owner, func_name),
+                    "repo": func_repo,
+                    "_rev": doc_revision
+                }
+
+                # update existing mapping, PUT /{db}/{docid}
+                update_mapping_request = requests.put(
+                    "{}/{}/{}".format(config.COUCH_DB_BASE, config.DB_MAPPINGS_NAME, doc_id),
+                    data=json.dumps(mapping),
+                    verify=False,
+                    headers=config.APPLICATION_JSON_HEADER)
+                print(update_mapping_request.json())
+                if update_mapping_request.status_code == 201:
+                    print("Mapping repo {} to action name updated!!!".format(func_repo))
+                else:
+                    print("Unable to update mapping for repo {}".format(func_repo))
+
+
+            else:
+                print("No mapping to an action found for repo {}, creating it...".format(func_repo))
+
+                mapping = {
+                    "actionName": "/{}/{}/{}".format(config.WHISK_NAMESPACE, repo_owner, func_name),
+                    "repo": func_repo
+                }
+
+                post_mapping_request = requests.post("{}/{}".format(config.COUCH_DB_BASE, config.DB_MAPPINGS_NAME),
+                                                     data=json.dumps(mapping),
+                                                     verify=False,
+                                                     headers=config.APPLICATION_JSON_HEADER)
+
+                if post_mapping_request.status_code == 201:
+                    print("Mapping for repo {} has been created!!!".format(func_repo))
+
+                else:
+                    print("Error creating mapping for repo {}".format(func_repo))
+
+        else:
+            print("Unable to query mappings!!!")
+
 
     def __perform_installation(self, func):
         print("Installing (creating or updating) function {} from repo {}".format(func.name, func.repo))
@@ -204,7 +254,7 @@ class Acquisition:
                     chosen_runtime = runtime
                     break
 
-        # docker hub name of the runtime identifies a custom runtime
+        # name of the runtime identifies a docker hub image, thus a custom runtime
         hub_runtime_name = chosen_runtime["name"]
 
         # Each action is created with the following name: repoOwner_functionName

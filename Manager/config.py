@@ -23,8 +23,12 @@ COUCH_DB_BASE = "http://{}:{}@{}:{}".format(COUCH_DB_WHISK_ADMIN_USER,
                                             COUCH_DB_WHISK_ADMIN_PASSWORD,
                                             COUCH_DB_HOST_IP,
                                             COUCH_DB_PORT)
+# db keeping all known runtimes
 DB_RUNTIMES_NAME = "runtimes"
 DB_METRICS_NAME = "metrics"
+
+# maps an action (function) name to its git repository url
+DB_MAPPINGS_NAME = "mappings"
 DB_METRICS_DESIGN_DOC = "metrics_doc"
 DB_METRICS_VIEW_NAME = "runtime_metrics"
 
@@ -45,12 +49,16 @@ CONFIG_FILE_NAME = "a3e_config.json"
 WHISK_NAMESPACE = "guest"
 WHISK_API_VERSION = "v1"
 # modify wsk path with the content returned by "which wsk" command
-WSK_PATH = "/home/ubuntu/git/incubator-openwhisk-devtools/docker-compose/openwhisk-src/bin/wsk"
-# WSK_PATH = "/Users/stefano/Desktop/incubator-openwhisk-devtools/docker-compose/openwhisk-src/bin/wsk"
+# WSK_PATH = "/home/ubuntu/git/incubator-openwhisk-devtools/docker-compose/openwhisk-src/bin/wsk"
+WSK_PATH = "/Users/stefano/Desktop/incubator-openwhisk-devtools/docker-compose/openwhisk-src/bin/wsk"
 
 REPOS_PATH = "./repositories"
 WEBSOCKET_PORT = "12323"
 
 # can be "local-edge" "mobile-edge" or "cloud"
-NODE_TYPE = "cloud"
-# NODE_TYPE = "local-edge"
+#NODE_TYPE = "cloud"
+NODE_TYPE = "local-edge"
+
+# curl -X POST -u 23bc46b1-71f6-4ed5-8c54-816aa4f8c502:123zO3xZCLrMN6v2BKK1dXYFpXlPkccOFqm12CdAsMgRU4VrNZ9lyGVCGuMDGIwP http://172.31.11.231:8888/api/v1/namespaces/guest/actions/helloWorld?blocking=true&result=true
+
+RUN_FLASK = False

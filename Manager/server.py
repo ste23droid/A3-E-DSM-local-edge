@@ -43,22 +43,34 @@ def monitoring():
     parsed_action_list = []
     for raw_action_name in raw_actions_list:
         parsed_action_list.append(raw_action_name.split()[0].decode("utf-8"))
-
     # print(parsed_action_list)
 
-    response_items = []
-    if len(parsed_action_list) > 0:
-        for repo in content["functions"]:
-            # action name on OpenWhisk: /guest/ste23droid/faceDetection
-            action_name = acquisition.map_repo_to_action_name.get(repo, None)
-            # in any case we should retrieve metrics to update them on the client
-            exec_time = get_metrics(action_name)
+    get_all_mappings_request = requests.get("{}/{}/_all_docs?include_docs=true".format(config.COUCH_DB_BASE, config.DB_MAPPINGS_NAME),
+                                             verify=False,
+                                             headers=config.APPLICATION_JSON_HEADER)
 
-            if action_name is not None and action_name in parsed_action_list:
-                print("Action {} available".format(action_name))
-                status = "available"
-            else:
-                status = "unavailable"
+    response_items = []
+    if get_all_mappings_request.status_code == 200:
+        mappings = get_all_mappings_request.json()["rows"]
+        print(get_all_mappings_request.json())
+
+        for repo in content["functions"]:
+            action_name = None
+            for mapping in mappings:
+               if mapping["doc"]["repo"] == repo:
+                  action_name = mapping["doc"]["actionName"]
+                  break
+
+            status = "unavailable"
+            exec_time = None
+
+            # is possible that we have never seen the repo
+            if action_name is not None:
+                # in any case (function installed or not) we should try to retrieve metrics to update them on the client
+                exec_time = get_metrics(action_name)
+                if action_name in parsed_action_list:
+                    status = "available"
+                    print("Action {} available".format(action_name))
 
             # there are actual metrics to send to the client
             if exec_time is not None:
@@ -110,7 +122,7 @@ def invoke():
 
 
 def get_metrics(action_name):
-    # todo: see if we can get metrics for all the actions at one, using the same key with multiple values
+    # todo: see if we can get metrics for all the actions at once, using the same key with multiple values
     # action name : guest/ste23droid/faceDetection
     action_name = re.sub("/", "_", action_name)
     # action_metrics_db_name = "{}_{}_{}".format(config.DB_METRICS_BASE_NAME,
@@ -189,6 +201,29 @@ def is_metrics_db_ready():
             print(create_metrics_db.json()["reason"])
     else:
         print(get_metrics_db.json()["reason"])
+
+    return False
+
+def is_mappings_db_ready():
+    mappings_db_url = config.COUCH_DB_BASE + "/" + config.DB_MAPPINGS_NAME
+    get_mappings_db = requests.get(mappings_db_url)
+
+    if get_mappings_db.status_code == 200:
+        print("Mappings database found!")
+        return True
+
+    elif get_mappings_db.status_code == 404:
+        print("Mappings database not found, creating it...")
+        create_mappings_db = requests.put(mappings_db_url)
+
+        if create_mappings_db.status_code == 201:
+            print("Mappings database created")
+            return True
+
+        else:
+            print(create_mappings_db.json()["reason"])
+    else:
+        print(get_mappings_db.json()["reason"])
 
     return False
 
@@ -281,6 +316,11 @@ if __name__ == "__main__":
                         default=config.WSK_PATH,
                         help='Path of the wsk command of the OpenWhisk installation to use')
 
+    parser.add_argument('--flask',
+                        type=bool,
+                        default=False,
+                        help='Whether to start Flask or not')
+
     parsed, ignored = parser.parse_known_args()
 
     if parsed.private_host_ip is not None:
@@ -301,21 +341,28 @@ if __name__ == "__main__":
     if parsed.wsk_path is not None:
         config.WSK_PATH = parsed.wsk_path
 
-    if runtimes_ready() and is_metrics_db_ready() and are_db_views_ready():
+    if parsed.flask is not None:
+        config.RUN_FLASK = parsed.flask
+
+    # todo: prendere un path a un config file con la lista di repo whitelisted permesso sul dominio
+
+    if runtimes_ready() and is_metrics_db_ready() \
+            and is_mappings_db_ready() and are_db_views_ready():
          runtimes = get_runtimes()
 
          if parsed.node_type == "local-edge":
             awareness = Awareness()
             awareness.start()
 
-         acquisition = Acquisition(runtimes)
+         # acquisition = Acquisition(runtimes)
 
          # run Websocket server
          websocketserver = A3EWebsocketServerProtocol()
          websocketserver.start()
 
          # run Flask REST API
-         app.run(host=config.PRIVATE_HOST_IP, port=config.FLASK_PORT, debug=False)
+         if config.RUN_FLASK:
+             app.run(host=config.PRIVATE_HOST_IP, port=config.FLASK_PORT, debug=False)
 
          t.sleep(config.DEFAULT_EXECUTION_TIME)
          if awareness is not None:
