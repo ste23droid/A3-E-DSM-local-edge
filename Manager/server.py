@@ -69,22 +69,23 @@ def monitoring():
                   break
 
             status = "unavailable"
-            exec_time = None
+            exec_time_percentile = None
 
             # is possible that we have never seen the repo
             if action_name is not None:
                 # in any case (function installed or not) we should try to retrieve metrics to update them on the client
                 # OLD: exec_time = get_metrics_avg_std(action_name)
-                exec_time = get_exec_time_percentile(action_name)
+                exec_time_percentile = get_exec_time_percentile(action_name)
                 if action_name in parsed_action_list:
                     status = "available"
                     #print("Action {} available".format(action_name))
 
             # there are actual metrics to send to the client
-            if exec_time is not None:
+            # the percentile is returned as String (not double) so Gson on client side can know if it's there or not, since String in Java is an object
+            if exec_time_percentile is not None:
                 response_items.append({"repo": repo,
                                        "status": status,
-                                       "execTime": exec_time})
+                                       "execTime": str(exec_time_percentile)})
             else:
                 response_items.append({"repo": repo,
                                        "status": status})
