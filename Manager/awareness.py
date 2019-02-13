@@ -13,22 +13,22 @@ class Awareness:
         self.awthread = threading.Thread(target=self.__heartbeat)
 
     def start(self):
-        print('Starting Domain Awareness')
+        print('Starting Domain Manager Awareness')
         # thread will die when the main thread dies
         self.awthread.daemon = True
         self.awthread.start()
 
     def stop(self):
-        print('Stopping Domain Awareness')
+        print('Stopping Domain Manager Awareness')
         self.awthread.do_run = False
         self.broadcast_socket.close()
         self.awthread.join()
 
     def __heartbeat(self):
-        print('Domain\'s Advertisement Broadcast Started')
+        print('Domain Manager Advertisement Broadcast Started')
         t = threading.currentThread()
         while getattr(t, "do_run", True):
             print('Sending Awareness Message')
-            self.broadcast_socket.sendto("http://{}:{}/identification".format(config.PRIVATE_HOST_IP,config.FLASK_PORT).encode(),
-                                            (config.BROADCAST_IP, config.BROADCAST_PORT))
+            self.broadcast_socket.sendto("http://{}:{}/identification".format(config.PRIVATE_HOST_IP, config.FLASK_PORT).encode(),
+                                                                             (config.BROADCAST_IP, config.BROADCAST_PORT))
             time.sleep(config.HEARTBEAT_INTERVAL)

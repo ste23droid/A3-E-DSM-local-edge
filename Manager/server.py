@@ -2,17 +2,19 @@ import time as t
 import argparse
 import requests
 import json
+import numpy
 import re
 from awareness import Awareness
 from acquisition import Acquisition
+from allocation import Allocation
 from websocketserver import A3EWebsocketServerProtocol
 import config
 from subprocess import check_output
 from flask import Flask, request, Response
-from os.path import dirname, abspath, join
 
 app = Flask(__name__)
 awareness = None
+allocation = None
 acquisition = None
 requests.packages.urllib3.disable_warnings()
 
@@ -42,7 +44,12 @@ def monitoring():
 
     parsed_action_list = []
     for raw_action_name in raw_actions_list:
-        parsed_action_list.append(raw_action_name.split()[0].decode("utf-8"))
+        # /guest/ste23droid/faceDetection                                        private blackbox
+        wsk_name = (raw_action_name.split())[0]
+        # e.g /guest/ste23droid/faceDetection -> but in the mappings actions are saved with ste23droid/faceDetection
+        wsk_name_splitted = wsk_name[7:]
+        print(f"Whisk name action splitted: {wsk_name_splitted}")
+        parsed_action_list.append(wsk_name_splitted.decode("utf-8"))
     # print(parsed_action_list)
 
     get_all_mappings_request = requests.get("{}/{}/_all_docs?include_docs=true".format(config.COUCH_DB_BASE, config.DB_MAPPINGS_NAME),
@@ -52,7 +59,7 @@ def monitoring():
     response_items = []
     if get_all_mappings_request.status_code == 200:
         mappings = get_all_mappings_request.json()["rows"]
-        print(get_all_mappings_request.json())
+        #print(get_all_mappings_request.json())
 
         for repo in content["functions"]:
             action_name = None
@@ -67,10 +74,11 @@ def monitoring():
             # is possible that we have never seen the repo
             if action_name is not None:
                 # in any case (function installed or not) we should try to retrieve metrics to update them on the client
-                exec_time = get_metrics(action_name)
+                # OLD: exec_time = get_metrics_avg_std(action_name)
+                exec_time = get_exec_time_percentile(action_name)
                 if action_name in parsed_action_list:
                     status = "available"
-                    print("Action {} available".format(action_name))
+                    #print("Action {} available".format(action_name))
 
             # there are actual metrics to send to the client
             if exec_time is not None:
@@ -85,62 +93,108 @@ def monitoring():
     return Response(json.dumps(json_response), mimetype='application/json')
 
 
-@app.route('/invoke', methods=['POST'])
-def invoke():
-    content = request.json
-    # print("Received Invoke json: " + str(content))
-    # client_ip = request.remote_addr
-    # print("Received Invoke Request from ip: " + client_ip)
-    # print("Received Invoke json: " + str(content))
-    start = t.time()
-    # response = check_output("{} action invoke {}/{} --param image {} --result --insecure".format(config.WSK_PATH,
-                                                                   # config.WHISK_NAMESPACE,
-                                                                   # content["function"],
-                                                                   # content["image"]), shell=True)
-    json_message = json.dumps(content)
-    response = requests.post("https://{}/api/v1/web/guest/{}".format(config.PRIVATE_HOST_IP, content["function"]),
-                                     data=json_message,
-                                     verify=False,
-                                     headers=config.APPLICATION_JSON_HEADER)
-    # # add metrics to the function metrics db
-    # requests.post("{}/{}_{}".format(config.COUCH_DB_BASE,
-    #                                config.DB_METRICS_BASE_NAME,
-    #                                re.sub("/", "_", content["function"].lower())),
-    #                                  data=json.dumps({"execMs": (t.time() - start)*1000,
-    #                                                   "payloadBytes": len(json_message)}),
-    #                                  verify=False,
-    #                                  headers=config.APPLICATION_JSON_HEADER)
+# @app.route('/invoke', methods=['POST'])
+# def invoke():
+#     content = request.json
+#     # print("Received Invoke json: " + str(content))
+#     # client_ip = request.remote_addr
+#     # print("Received Invoke Request from ip: " + client_ip)
+#     # print("Received Invoke json: " + str(content))
+#     start = t.time()
+#     # response = check_output("{} action invoke {}/{} --param image {} --result --insecure".format(config.WSK_PATH,
+#                                                                    # config.WHISK_NAMESPACE,
+#                                                                    # content["function"],
+#                                                                    # content["image"]), shell=True)
+#     json_message = json.dumps(content)
+#     response = requests.post("https://{}/api/v1/web/guest/{}".format(config.PRIVATE_HOST_IP, content["function"]),
+#                                      data=json_message,
+#                                      verify=False,
+#                                      headers=config.APPLICATION_JSON_HEADER)
+#     # # add metrics to the function metrics db
+#     # requests.post("{}/{}_{}".format(config.COUCH_DB_BASE,
+#     #                                config.DB_METRICS_BASE_NAME,
+#     #                                re.sub("/", "_", content["function"].lower())),
+#     #                                  data=json.dumps({"execMs": (t.time() - start)*1000,
+#     #                                                   "payloadBytes": len(json_message)}),
+#     #                                  verify=False,
+#     #                                  headers=config.APPLICATION_JSON_HEADER)
+#
+#     # add action execution metrics to the metrics db
+#     requests.post("{}/{}".format(config.COUCH_DB_BASE, config.DB_METRICS_NAME),
+#                   data=json.dumps({"function":  content["function"],
+#                                    "execMs": (t.time() - start) * 1000,
+#                                    "payloadBytes": len(json_message)}),
+#                   verify=False,
+#                   headers=config.APPLICATION_JSON_HEADER)
+#     return Response(response.content, mimetype='application/json')
 
-    # add action execution metrics to the metrics db
-    requests.post("{}/{}".format(config.COUCH_DB_BASE, config.DB_METRICS_NAME),
-                  data=json.dumps({"function":  content["function"],
-                                   "execMs": (t.time() - start) * 1000,
-                                   "payloadBytes": len(json_message)}),
-                  verify=False,
-                  headers=config.APPLICATION_JSON_HEADER)
-    return Response(response.content, mimetype='application/json')
 
 
-def get_metrics(action_name):
-    # todo: see if we can get metrics for all the actions at once, using the same key with multiple values
-    # action name : guest/ste23droid/faceDetection
-    action_name = re.sub("/", "_", action_name)
-    # action_metrics_db_name = "{}_{}_{}".format(config.DB_METRICS_BASE_NAME,
-    #                                            action_name.split('_')[1].lower(),
-    #                                            action_name.split('_')[2].lower())
-    action_metrics_url = "{}/{}/_design/{}/_view/{}?key=\"{}/{}\"".format(config.COUCH_DB_BASE,
-                                                                                config.DB_METRICS_NAME,
-                                                                                config.DB_METRICS_DESIGN_DOC,
-                                                                                config.DB_METRICS_VIEW_NAME,
-                                                                                action_name.split("_")[1],
-                                                                                action_name.split("_")[2])
-    metrics_result = requests.get(action_metrics_url)
-    json_result = metrics_result.json()
 
-    # we have saved metrics for the action
-    if len(json_result["rows"]) == 1:
-        metrics_content = json_result["rows"][0]["value"]
-        return {"execTime": {"avg": metrics_content["average"], "stdDev": metrics_content["stdDeviation"]}}
+
+
+# def get_metrics_avg_std(action_name):
+#     # todo: see if we can get metrics for all the actions at once, using the same key with multiple values
+#     # action name : guest/ste23droid/faceDetection
+#     action_name = re.sub("/", "_", action_name)
+#     # action_metrics_db_name = "{}_{}_{}".format(config.DB_METRICS_BASE_NAME,
+#     #                                            action_name.split('_')[1].lower(),
+#     #                                            action_name.split('_')[2].lower())
+#     action_metrics_url = "{}/{}/_design/{}/_view/{}?key=\"{}/{}\"".format(config.COUCH_DB_BASE,
+#                                                                                 config.DB_METRICS_NAME,
+#                                                                                 config.DB_METRICS_DESIGN_DOC,
+#                                                                                 config.DB_METRICS_VIEW_NAME,
+#                                                                                 action_name.split("_")[1],
+#                                                                                 action_name.split("_")[2])
+#     metrics_result = requests.get(action_metrics_url)
+#     json_result = metrics_result.json()
+#
+#     # we have saved metrics for the action
+#     if len(json_result["rows"]) == 1:
+#         metrics_content = json_result["rows"][0]["value"]
+#         return {"execTime": {"avg": metrics_content["average"], "stdDev": metrics_content["stdDeviation"]}}
+#
+#     return None
+
+def get_exec_time_percentile(action_name):
+    database_name = re.sub("/", "-", action_name).lower()
+    get_all_function_metrics = requests.get("{}/{}-{}/_all_docs?include_docs=true".format(
+                                                                config.COUCH_DB_BASE,
+                                                                config.DB_METRICS_NAME,
+                                                                database_name),
+                                             verify=False,
+                                             headers=config.APPLICATION_JSON_HEADER)
+    #print(f"{get_all_function_metrics.json()}")
+
+    if get_all_function_metrics.status_code == 200:
+        metrics = get_all_function_metrics.json()["rows"]
+        #print(metrics)
+
+        # normal strategy
+        metrics_exec_time_interval = []
+        # fallback strategy
+        metrics_exec_time_all = []
+
+        if len(metrics) != 0:
+            for metric in metrics:
+                metric_creation_time = metric["doc"]["requestTime"]
+                exec_time = metric["doc"]["execTimeSec"]
+
+                # only recent metrics
+                if (t.time() - metric_creation_time) < config.METRICS_INTERVAL_SECONDS:
+                    metrics_exec_time_interval.append(exec_time)
+
+                # fallback strategy
+                metrics_exec_time_all.append(exec_time)
+
+            # compute percentile
+            if len(metrics_exec_time_interval) != 0:
+                percentile_95 = numpy.percentile(metrics_exec_time_interval, 95)
+            else:
+                percentile_95 = numpy.percentile(metrics_exec_time_all, 95)
+            return percentile_95
+        else:
+            print(f"No execution time metrics for action {action_name} at the moment")
 
     return None
 
@@ -180,29 +234,29 @@ def runtimes_ready():
 
     return False
 
+# def is_metrics_db_ready():
+#     metrics_db_url = config.COUCH_DB_BASE + "/" + config.DB_METRICS_NAME
+#     get_metrics_db = requests.get(metrics_db_url)
+#
+#     if get_metrics_db.status_code == 200:
+#         print("Metrics database found!")
+#         return True
+#
+#     elif get_metrics_db.status_code == 404:
+#         print("Metrics database not found, creating it...")
+#         create_metrics_db = requests.put(metrics_db_url)
+#
+#         if create_metrics_db.status_code == 201:
+#             print("Metrics database created")
+#             return True
+#
+#         else:
+#             print(create_metrics_db.json()["reason"])
+#     else:
+#         print(get_metrics_db.json()["reason"])
+#
+#     return False
 
-def is_metrics_db_ready():
-    metrics_db_url = config.COUCH_DB_BASE + "/" + config.DB_METRICS_NAME
-    get_metrics_db = requests.get(metrics_db_url)
-
-    if get_metrics_db.status_code == 200:
-        print("Metrics database found!")
-        return True
-
-    elif get_metrics_db.status_code == 404:
-        print("Metrics database not found, creating it...")
-        create_metrics_db = requests.put(metrics_db_url)
-
-        if create_metrics_db.status_code == 201:
-            print("Metrics database created")
-            return True
-
-        else:
-            print(create_metrics_db.json()["reason"])
-    else:
-        print(get_metrics_db.json()["reason"])
-
-    return False
 
 def is_mappings_db_ready():
     mappings_db_url = config.COUCH_DB_BASE + "/" + config.DB_MAPPINGS_NAME
@@ -228,73 +282,68 @@ def is_mappings_db_ready():
     return False
 
 
-def are_db_views_ready():
-    metrics_design_doc_url = "{}/{}/_design/{}".format(config.COUCH_DB_BASE,
-                                                       config.DB_METRICS_NAME,
-                                                       config.DB_METRICS_DESIGN_DOC)
-    get_design_doc = requests.get(metrics_design_doc_url)
-
-    if get_design_doc.status_code == 200:
-        print("Design document found!")
-        return True
-
-    elif get_design_doc.status_code == 404:
-        print("Metrics design document not found, creating it...")
-
-        # this will create both design doc and the needed views inside it
-        couch_db_parent_dir = dirname(abspath(__file__))
-        metrics_design_doc_path = join(join(couch_db_parent_dir, "couchdb"), "metrics_design_doc.json")
-        print(metrics_design_doc_path)
-        create_design_doc = requests.put(metrics_design_doc_url,
-                                         data=open(metrics_design_doc_path, "r"),
-                                         headers=config.APPLICATION_JSON_HEADER)
-
-        if create_design_doc.status_code == 201:
-            print("Metrics design document and views created")
-            return True
-
-        else:
-            print(create_design_doc.json()["reason"])
-    else:
-        print(get_design_doc.json()["reason"])
-
-    return False
-
-
-def get_runtimes():
-    known_runtimes = []
-    get_list_runtimes = requests.get("{}/{}/_all_docs".format(config.COUCH_DB_BASE,config.DB_RUNTIMES_NAME))
-    if get_list_runtimes.status_code == 200:
-        list_runtimes = get_list_runtimes.json()
-        # print(type(list_runtimes))
-        for elem in list_runtimes["rows"]:
-            get_runtime = requests.get("{}/{}/{}".format(config.COUCH_DB_BASE,
-                                                         config.DB_RUNTIMES_NAME,
-                                                         elem["id"]))
-            if get_runtime.status_code == 200:
-                known_runtimes.append(get_runtime.json())
-    else:
-        print("Error, unable to get any runtime!!!")
-    assert len(known_runtimes) > 0
-    return known_runtimes
-
+# def are_db_views_ready():
+#     metrics_design_doc_url = "{}/{}/_design/{}".format(config.COUCH_DB_BASE,
+#                                                        config.DB_METRICS_NAME,
+#                                                        config.DB_METRICS_DESIGN_DOC)
+#     get_design_doc = requests.get(metrics_design_doc_url)
+#
+#     if get_design_doc.status_code == 200:
+#         print("Design document found!")
+#         return True
+#
+#     elif get_design_doc.status_code == 404:
+#         print("Metrics design document not found, creating it...")
+#
+#         # this will create both design doc and the needed views inside it
+#         couch_db_parent_dir = dirname(abspath(__file__))
+#         metrics_design_doc_path = join(join(couch_db_parent_dir, "couchdb"), "metrics_design_doc.json")
+#         print(metrics_design_doc_path)
+#         create_design_doc = requests.put(metrics_design_doc_url,
+#                                          data=open(metrics_design_doc_path, "r"),
+#                                          headers=config.APPLICATION_JSON_HEADER)
+#
+#         if create_design_doc.status_code == 201:
+#             print("Metrics design document and views created")
+#             return True
+#
+#         else:
+#             print(create_design_doc.json()["reason"])
+#     else:
+#         print(get_design_doc.json()["reason"])
+#
+#     return False
 
 if __name__ == "__main__":
+
+    # TODO: ADD LOOP ON DOMAIN MANAGER TO CHECK FOR UNUSED ACTIONS: after a timeout we need to uninstall them
+    # todo: prendere un path a un config file con la lista di repo whitelisted permesso sul dominio
+    # API REST CONFIG: add runtime, get runtimes, add whitelist (auth), get whitelist (auth)
     parser = argparse.ArgumentParser()
     parser.add_argument('--private-host-ip',
                         type=str,
                         default=config.PRIVATE_HOST_IP,
                         help='The private ip of this machine in the local network')
 
-    parser.add_argument('--broadcast-ip',
-                        type=str,
-                        default=config.BROADCAST_IP,
-                        help='The broadcast ip of the local network')
-
     parser.add_argument('--public-host-ip',
                         type=str,
                         default=config.PUBLIC_HOST_IP,
                         help='The public ip of this machine')
+
+    parser.add_argument('--broadcast-ip',
+                        type=str,
+                        default=config.BROADCAST_IP,
+                        help='The broadcast ip of the local network for UDP Awareness')
+
+    parser.add_argument('--broadcast-port',
+                        type=int,
+                        default=config.BROADCAST_PORT,
+                        help='The broadcast port for UDP Awareness')
+
+    parser.add_argument('--ws-port',
+                        type=int,
+                        default=config.WEBSOCKET_PORT,
+                        help='The ws port to reach this Domain Manager')
 
     parser.add_argument('--couch-db-user',
                         type=str,
@@ -318,8 +367,18 @@ if __name__ == "__main__":
 
     parser.add_argument('--flask',
                         type=bool,
-                        default=False,
+                        default=True,
                         help='Whether to start Flask or not')
+
+    parser.add_argument('--flask-port',
+                        type=int,
+                        default=config.FLASK_PORT,
+                        help='The port used by FLASK REST API')
+
+    parser.add_argument('--metrics-interval',
+                        type=int,
+                        default=config.METRICS_INTERVAL_SECONDS,
+                        help='Metrics interval to get percentiles from db metrics')
 
     parsed, ignored = parser.parse_known_args()
 
@@ -328,6 +387,15 @@ if __name__ == "__main__":
 
     if parsed.public_host_ip is not None:
         config.PUBLIC_HOST_IP = parsed.public_host_ip
+
+    if parsed.broadcast_ip is not None:
+        config.BROADCAST_IP = parsed.broadcast_ip
+
+    if parsed.broadcast_port is not None:
+        config.BROADCAST_PORT = parsed.broadcast_port
+
+    if parsed.ws_port is not None:
+        config.WEBSOCKET_PORT = parsed.ws_port
 
     if parsed.couch_db_user is not None:
         config.COUCH_DB_WHISK_ADMIN_USER = parsed.couch_db_user
@@ -344,17 +412,22 @@ if __name__ == "__main__":
     if parsed.flask is not None:
         config.RUN_FLASK = parsed.flask
 
-    # todo: prendere un path a un config file con la lista di repo whitelisted permesso sul dominio
+    if parsed.flask_port is not None:
+        config.FLASK_PORT = parsed.flask_port
 
-    if runtimes_ready() and is_metrics_db_ready() \
-            and is_mappings_db_ready() and are_db_views_ready():
-         runtimes = get_runtimes()
+    if parsed.metrics_interval is not None:
+        config.METRICS_INTERVAL_SECONDS = parsed.metrics_interval
 
-         if parsed.node_type == "local-edge":
+    if runtimes_ready() and is_mappings_db_ready():
+            #and is_metrics_db_ready() \
+            #and are_db_views_ready()\
+
+         if config.NODE_TYPE == "local-edge":
             awareness = Awareness()
             awareness.start()
 
-         # acquisition = Acquisition(runtimes)
+         allocation = Allocation()
+         acquisition = Acquisition(allocation)
 
          # run Websocket server
          websocketserver = A3EWebsocketServerProtocol()

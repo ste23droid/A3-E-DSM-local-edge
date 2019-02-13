@@ -3,3 +3,4 @@ pip==18.1
 requests==2.21.0
 setuptools==4.60.3
 autobahn[asyncio, accelerate]==18.12
+numpy==1.16.1

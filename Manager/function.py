@@ -4,7 +4,7 @@ class Function:
 
     def __init__(self, name, repo, repo_owner, repo_name,
                  path, runtime, runtime_version, dependencies,
-                 memory, authenticated, json_param_name):
+                 memory, authenticated):
         self.name = name
         self.repo = repo
         self.repo_owner = repo_owner
@@ -15,4 +15,3 @@ class Function:
         self.dependencies = dependencies
         self.memory = memory
         self.authenticated = authenticated
-        self.json_param_name = json_param_name

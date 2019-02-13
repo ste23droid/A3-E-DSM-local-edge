@@ -1,6 +1,5 @@
 import os
 import json
-import re
 from subprocess import call, check_output
 from function import Function
 import config
@@ -10,10 +9,10 @@ from os.path import dirname, abspath, join
 
 class Acquisition:
 
-    def __init__(self, runtimes):
+    def __init__(self, allocation):
         self.INSTALL_FAILED = "install_failed"
         self.INSTALL_DONE = "install_done"
-        self.runtimes = runtimes
+        self.allocation = allocation
         requests.packages.urllib3.disable_warnings()
 
     def __parse_request__(self, json_content):
@@ -48,9 +47,9 @@ class Acquisition:
 
             if parsed_function is not None and self.__is_compatible_with_domain(parsed_function):
 
-                 if git_repo_has_changed or not self.__is_function_installed(parsed_function):
+                 if git_repo_has_changed or not self.allocation.__is_function_installed__(parsed_function):
                      # update function on wsk
-                     install_result = self.__perform_installation(parsed_function)
+                     install_result = self.allocation.__perform_installation__(parsed_function)
                      if install_result != self.INSTALL_FAILED:
                          return {
                              "function": parsed_function.repo,
@@ -79,11 +78,11 @@ class Acquisition:
 
     def __repo_blacklisted(self, repo):
         # todo: improve in future release
-        # TODO: for compatiblity we need to add open whisk about GPU support, and ram,
-        # TODO: compatibility should be inserted in the config a3e file defined in the app
         return False
 
     def __is_compatible_with_domain(self, parsed_function):
+        # TODO: for compatiblity we need to think about GPU support for example
+        # TODO: compatibility should be inserted in the a3e config file
         return True
 
     def __clone_repo(self, repo_owner, repo_url):
@@ -92,25 +91,14 @@ class Acquisition:
                     "cd {}/{}; ".format(config.REPOS_PATH, repo_owner) +
                     "git clone {} ".format(repo_url), shell=True)
 
-    def __is_function_installed(self, parsed_function):
-        raw_actions_list = check_output("{} action list -i".format(config.WSK_PATH), shell=True).splitlines()[1:]
-        parsed_action_list = []
-        for raw_action_name in raw_actions_list:
-            parsed_action_list.append(raw_action_name.split()[0].decode("utf-8"))
-        installed_func_name = "/{}/{}/{}".format(config.WHISK_NAMESPACE, parsed_function.repo_owner, parsed_function.name)
-        if installed_func_name in parsed_action_list:
-            print(f"Function {installed_func_name} is already installed!!!")
-            return True
-        return False
-
     def __need_update_repo(self, repo_owner, repo_name, repo_url):
-        print('Updating repo {}'.format(repo_url))
+        print('Check if we need to update repo {}'.format(repo_url))
 
         result = check_output("cd {}/{}/{}; ".format(config.REPOS_PATH, repo_owner, repo_name) +
                               "git pull origin master ", shell=True).splitlines()[0]
-        # b'Already up to date.' in python 3.6
+        # b'Already up to date.' in python 3.6, or use the method .decode("utf-8")
         if result.decode("utf-8") == 'Already up to date.':
-            print('Already up to date.')
+            print(f'{repo_url} already up to date')
             return False
         return True
 
@@ -133,45 +121,32 @@ class Acquisition:
                     runtime_version = json_content["runtimeVersion"]
                     memory = json_content["memory"]
                     authenticated = json_content["authenticated"]
-                    func_json_param_name = json_content["paramName"]
                     for dependency in json_content["dependencies"]:
                         func_dependencies.append(dependency)
                     func_path = os.path.join(repo_directory, json_content["path"])
 
-                    # map repository url to wsk action name
+                    # map microservice's repository url to wsk action name in couch db
                     self.__check_mapping(repo_owner, func_name, func_repo)
 
                     return Function(func_name, func_repo, repo_owner, repo_name, func_path, runtime, runtime_version,
-                                    func_dependencies, memory, authenticated, func_json_param_name)
+                                    func_dependencies, memory, authenticated)
 
         print("Error... no config file found!!!")
         return None
 
-    def __satisfies_dependencies(self, runtime, function):
-
-        if runtime["language"] == function.runtime and runtime["languageVersion"] == function.runtime_version:
-            runtime_libs_set = set(dependency["lib"] for dependency in runtime["dependencies"])
-            function_libs_set = set(dependency["lib"] for dependency in function.dependencies)
-            diff_set = [lib for lib in runtime_libs_set if lib not in function_libs_set]
-
-            if len(diff_set) >= 0:
-                # runtime may have exact same dependencies or more dependencies than the function
-                for f_dep in function.dependencies:
-                    f_lib_version = f_dep["version"]
-                    # requirement can be >= or ==
-                    f_lib_requirement = f_lib_version[:2]
-                    f_lib_num_version = int(re.sub(".", "", f_lib_version[2:]))
-                    r_lib_num_version = \
-                        [dependency["version"] for dependency in runtime["dependencies"] if
-                         dependency["lib"] == f_dep["lib"]][0]
-                    if (f_lib_requirement == ">=" and r_lib_num_version < f_lib_num_version) or \
-                            (f_lib_requirement == "==" and r_lib_num_version != f_lib_num_version):
-                        return False
-                return True
-
-        return False
-
     def __check_mapping(self, repo_owner, func_name, func_repo):
+        # https://github.com/apache/incubator-openwhisk/blob/master/docs/rest_api.md
+        #
+        # WEB ACTIONS
+        # URL: https://192.168.1.214/api/v1/web/guest/ste23droid/faceDetection
+        # ACTION NAME: /guest/ste23droid/faceDetection                                        private blackbox
+
+        # NORMAL ACTIONS
+        # URL: https://192.168.1.214/api/v1/namespaces/guest/actions/ste23droid/faceDetection
+        # ACTION NAME: /guest/ste23droid/faceDetection                                        private blackbox
+
+
+
         # check if mapping already exists, POST /{db}/_find
         check_mapping_request = requests.post("{}/{}/_find".format(config.COUCH_DB_BASE, config.DB_MAPPINGS_NAME),
                                               data=json.dumps({"selector": {"repo": func_repo}}),
@@ -184,8 +159,14 @@ class Acquisition:
                 doc_id = json_result["docs"][0]["_id"]
                 doc_revision = json_result["docs"][0]["_rev"]
 
+                # mapping = {
+                #     "actionName": "/{}/{}/{}".format(config.WHISK_NAMESPACE, repo_owner, func_name),
+                #     "repo": func_repo,
+                #     "_rev": doc_revision
+                # }
+
                 mapping = {
-                    "actionName": "/{}/{}/{}".format(config.WHISK_NAMESPACE, repo_owner, func_name),
+                    "actionName": "{}/{}".format(repo_owner, func_name),
                     "repo": func_repo,
                     "_rev": doc_revision
                 }
@@ -206,8 +187,13 @@ class Acquisition:
             else:
                 print("No mapping to an action found for repo {}, creating it...".format(func_repo))
 
+                # mapping = {
+                #     "actionName": "/{}/{}/{}".format(config.WHISK_NAMESPACE, repo_owner, func_name),
+                #     "repo": func_repo
+                # }
+
                 mapping = {
-                    "actionName": "/{}/{}/{}".format(config.WHISK_NAMESPACE, repo_owner, func_name),
+                    "actionName": "{}/{}".format(repo_owner, func_name),
                     "repo": func_repo
                 }
 
@@ -224,76 +210,3 @@ class Acquisition:
 
         else:
             print("Unable to query mappings!!!")
-
-
-    def __perform_installation(self, func):
-        print("Installing (creating or updating) function {} from repo {}".format(func.name, func.repo))
-
-        # # create database to hold metrics for this function
-        # # http://docs.couchdb.org/en/2.3.0/api/database/common.html#put--db
-        # create_db_response = requests.put("{}/{}_{}_{}".format(config.COUCH_DB_BASE,
-        #                                                        config.DB_METRICS_BASE_NAME,
-        #                                                        func.repo_owner.lower(),
-        #                                                        func.name.lower()))
-        # if create_db_response.status_code == 201:
-        #     print("Function metrics db created successfully")
-        # elif create_db_response.status_code == 412:
-        #     print("Function metrics db already exists, no creation needed")
-        # else:
-        #     print(create_db_response.content)
-        #     print("Error creating function metrics db, code {}".format(create_db_response.status_code))
-
-        # select a known suitable runtime
-        chosen_runtime = None
-        if len(self.runtimes) == 1:
-            chosen_runtime = self.runtimes[0]
-        else:
-            # find the first suitable runtime for the function
-            for runtime in self.runtimes:
-                if self.__satisfies_dependencies(runtime, func):
-                    chosen_runtime = runtime
-                    break
-
-        # name of the runtime identifies a docker hub image, thus a custom runtime
-        hub_runtime_name = chosen_runtime["name"]
-
-        # Each action is created with the following name: repoOwner_functionName
-        if not func.authenticated:
-            # https://github.com/apache/incubator-openwhisk/blob/master/docs/webactions.md
-            #  wsk package update --- update an existing package, or create a package if it does not exist
-            call('{} package update {} --insecure'.format(config.WSK_PATH, func.repo_owner), shell=True)
-            #  wsk action update --- update an existing action, or create an action if it does not exist
-            update_function_cmd = '{} action update {}/{} --docker \
-                                   {} {} --web true -m {} --insecure'.format(config.WSK_PATH,
-                                                                            func.repo_owner,
-                                                                            func.name,
-                                                                            hub_runtime_name,
-                                                                            func.path,
-                                                                            func.memory)
-        else:
-            # https://github.com/apache/incubator-openwhisk/blob/master/docs/rest_api.md
-            update_function_cmd = '{} action update {}/{} --docker \
-                                   {} {} -m {} --insecure'.format(config.WSK_PATH,
-                                                                  func.repo_owner,
-                                                                  func.name,
-                                                                  hub_runtime_name,
-                                                                  func.path,
-                                                                  func.memory)
-        if call(update_function_cmd, shell=True) != 0:
-                return self.INSTALL_FAILED
-        return self.INSTALL_DONE
-
-    def __get_function_endpoint(self, func):
-        # https://github.com/apache/incubator-openwhisk/blob/master/docs/rest_api.md
-        if not func.authenticated:
-          return "https://{}/api/{}/web/{}/{}/{}".format(config.PRIVATE_HOST_IP,
-                                                         config.WHISK_API_VERSION,
-                                                         config.WHISK_NAMESPACE,
-                                                         func.repo_owner,
-                                                         func.name)
-
-        return "https://{}/api/{}/namespaces/{}/actions/{}/{}".format(config.PRIVATE_HOST_IP,
-                                                                      config.WHISK_API_VERSION,
-                                                                      config.WHISK_NAMESPACE,
-                                                                      func.repo_owner,
-                                                                      func.name)
