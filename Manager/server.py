@@ -85,7 +85,7 @@ def monitoring():
             if exec_time_percentile is not None:
                 response_items.append({"repo": repo,
                                        "status": status,
-                                       "execTime": str(exec_time_percentile).encode('utf-8')})
+                                       "execTime": str(exec_time_percentile)})
             else:
                 response_items.append({"repo": repo,
                                        "status": status})
