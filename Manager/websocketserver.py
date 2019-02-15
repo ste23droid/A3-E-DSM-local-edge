@@ -66,11 +66,13 @@ class A3EWebsocketServerProtocol(WebSocketServerProtocol):
         #print("Resp code {}".format(exec_response))
         execTimeSec = t.time() - startExec
 
-        # add asynchronously action execution metrics to the function's metrics db
-        #db_start = t.time()
-        loop.create_task(self.wrap_db_request(json_request, json_message, execTimeSec))
-        #db_delta_timeSec = t.time() - db_start
-        #print(f"Time spent fire and forget request to db: {db_delta_timeSec}")
+        # ignore cold start metrics
+        if execTimeSec <= 1000:
+            # add asynchronously action execution metrics to the function's metrics db
+            # db_start = t.time()
+            loop.create_task(self.wrap_db_request(json_request, json_message, execTimeSec))
+            # db_delta_timeSec = t.time() - db_start
+            # print(f"Time spent fire and forget request to db: {db_delta_timeSec}")
 
         response_json = exec_response.json()
         #print("Response {}".format(response_json))
