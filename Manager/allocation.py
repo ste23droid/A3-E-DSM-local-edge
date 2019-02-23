@@ -11,6 +11,7 @@ class Allocation:
         self.INSTALL_DONE = "install_done"
         requests.packages.urllib3.disable_warnings()
 
+    # called in __perform_installation__
     def __get_runtimes(self):
         known_runtimes = []
         get_list_runtimes = requests.get("{}/{}/_all_docs".format(config.COUCH_DB_BASE, config.DB_RUNTIMES_NAME))
@@ -28,6 +29,7 @@ class Allocation:
         assert len(known_runtimes) > 0
         return known_runtimes
 
+    # called from acquisition
     def __is_function_installed__(self, parsed_function):
         raw_actions_list = check_output("{} action list -i".format(config.WSK_PATH), shell=True).splitlines()[1:]
         parsed_action_list = []
@@ -39,6 +41,7 @@ class Allocation:
             return True
         return False
 
+    # called in __perform_installation__
     def __satisfies_dependencies(self, runtime, function):
 
         if runtime["language"] == function.runtime and runtime["languageVersion"] == function.runtime_version:
@@ -62,6 +65,7 @@ class Allocation:
 
         return False
 
+    # called from acquisition
     def __perform_installation__(self, func):
         print("Installing (creating or updating) function {} from repo {}".format(func.name, func.repo))
 

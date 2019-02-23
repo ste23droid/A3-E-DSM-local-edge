@@ -125,7 +125,7 @@ class Acquisition:
                         func_dependencies.append(dependency)
                     func_path = os.path.join(repo_directory, json_content["path"])
 
-                    # map microservice's repository url to wsk action name in couch db
+                    # todo: move this after installation of the action, map microservice's repository url to wsk action name in couch db
                     self.__check_mapping(repo_owner, func_name, func_repo)
 
                     return Function(func_name, func_repo, repo_owner, repo_name, func_path, runtime, runtime_version,
@@ -134,6 +134,7 @@ class Acquisition:
         print("Error... no config file found!!!")
         return None
 
+    # todo: move inside allocation__perform_installation__
     def __check_mapping(self, repo_owner, func_name, func_repo):
         # https://github.com/apache/incubator-openwhisk/blob/master/docs/rest_api.md
         #

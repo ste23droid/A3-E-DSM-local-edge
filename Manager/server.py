@@ -48,7 +48,7 @@ def monitoring():
         wsk_name = (raw_action_name.split())[0]
         # e.g /guest/ste23droid/faceDetection -> but in the mappings actions are saved with ste23droid/faceDetection
         wsk_name_splitted = wsk_name[7:]
-        print(f"Whisk name action splitted: {wsk_name_splitted}")
+        # print(f"Whisk name action splitted: {wsk_name_splitted}")
         parsed_action_list.append(wsk_name_splitted.decode("utf-8"))
     # print(parsed_action_list)
 
@@ -156,6 +156,7 @@ def monitoring():
 #         return {"execTime": {"avg": metrics_content["average"], "stdDev": metrics_content["stdDeviation"]}}
 #
 #     return None
+
 
 def get_exec_time_percentile(action_name):
     database_name = re.sub("/", "-", action_name).lower()
