@@ -31,7 +31,7 @@ class Acquisition:
         # https://github.com/ste23droid/A3E-OpenWhisk-face-detection
         repo_owner = splits[3]
         repo_name = splits[4]
-        print('Checking Acquisition of {}'.format(func_repo))
+        #print('Checking Acquisition of {}'.format(func_repo))
 
         if not self.__repo_blacklisted(func_repo):
             path_exists = os.path.exists("{}/{}/{}".format(config.REPOS_PATH, repo_owner, repo_name))
@@ -92,18 +92,18 @@ class Acquisition:
                     "git clone {} ".format(repo_url), shell=True)
 
     def __need_update_repo(self, repo_owner, repo_name, repo_url):
-        print('Check if we need to update repo {}'.format(repo_url))
+        #print('Check if we need to update repo {}'.format(repo_url))
 
         result = check_output("cd {}/{}/{}; ".format(config.REPOS_PATH, repo_owner, repo_name) +
                               "git pull origin master ", shell=True).splitlines()[0]
         # b'Already up to date.' in python 3.6, or use the method .decode("utf-8")
         if result.decode("utf-8") == 'Already up to date.':
-            print(f'{repo_url} already up to date')
+            #print(f'{repo_url} already up to date')
             return False
         return True
 
     def __parse_config__(self, repo_owner, repo_name, func_repo):
-        print('Checking for A3E config file in repo')
+        #print('Checking for A3E config file in repo')
         # print os.path.dirname(os.path.abspath(__file__))
         repositories_directory = os.path.join(os.path.dirname(os.path.abspath(__file__)), "repositories")
         repo_directory = os.path.join(os.path.join(repositories_directory, repo_owner), repo_name)

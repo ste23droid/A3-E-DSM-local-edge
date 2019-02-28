@@ -31,7 +31,10 @@ class Allocation:
 
     # called from acquisition
     def __is_function_installed__(self, parsed_function):
-        raw_actions_list = check_output("{} action list -i".format(config.WSK_PATH), shell=True).splitlines()[1:]
+        if not config.REMAP_PORTS:
+            raw_actions_list = check_output("{} action list -i".format(config.WSK_PATH), shell=True).splitlines()[1:]
+        else:
+            raw_actions_list = check_output("{} --apihost http://localhost:8888 action list -i".format(config.WSK_PATH), shell=True).splitlines()[1:]
         parsed_action_list = []
         for raw_action_name in raw_actions_list:
             parsed_action_list.append(raw_action_name.split()[0].decode("utf-8"))
@@ -108,25 +111,48 @@ class Allocation:
             # NOT AUTHENTICATED, is an OPEN WHISK WEB ACTION
             # https://github.com/apache/incubator-openwhisk/blob/master/docs/webactions.md
             #  wsk package update --- update an existing package, or create a package if it does not exist
-            call('{} package update {} --insecure'.format(config.WSK_PATH, func.repo_owner), shell=True)
+            if not config.REMAP_PORTS:
+                call('{} package update {} --insecure'.format(config.WSK_PATH, func.repo_owner), shell=True)
+            else:
+                call('{} --apihost http://localhost:8888 package update {} --insecure'.format(config.WSK_PATH, func.repo_owner), shell=True)
             #  wsk action update --- update an existing action, or create an action if it does not exist
-            update_function_cmd = '{} action update {}/{} --docker \
+            if not config.REMAP_PORTS:
+                update_function_cmd = '{} action update {}/{} --docker \
                                         {} {} --web True -m {} --insecure'.format(config.WSK_PATH,
                                                                                   func.repo_owner,
                                                                                   func.name,
                                                                                   hub_runtime_name,
                                                                                   func.path,
                                                                                   func.memory)
+            else:
+                update_function_cmd = '{} --apihost http://localhost:8888 action update {}/{} --docker \
+                                                       {} {} --web True -m {} --insecure'.format(config.WSK_PATH,
+                                                                                                 func.repo_owner,
+                                                                                                 func.name,
+                                                                                                 hub_runtime_name,
+                                                                                                 func.path,
+                                                                                                 func.memory)
+
         else:
             # authenticated, is a OPEN WHISK ACTION
             # https://github.com/apache/incubator-openwhisk/blob/master/docs/rest_api.md
-            update_function_cmd = '{} action update {}/{} --docker \
-                                        {} {} -m {} --insecure'.format(config.WSK_PATH,
-                                                                       func.repo_owner,
-                                                                       func.name,
-                                                                       hub_runtime_name,
-                                                                       func.path,
-                                                                       func.memory)
+            if not config.REMAP_PORTS:
+                update_function_cmd = '{} action update {}/{} --docker \
+                                            {} {} -m {} --insecure'.format(config.WSK_PATH,
+                                                                           func.repo_owner,
+                                                                           func.name,
+                                                                           hub_runtime_name,
+                                                                           func.path,
+                                                                           func.memory)
+            else:
+                update_function_cmd = '{} --apihost http://localhost:8888 action update {}/{} --docker \
+                                                           {} {} -m {} --insecure'.format(config.WSK_PATH,
+                                                                                          func.repo_owner,
+                                                                                          func.name,
+                                                                                          hub_runtime_name,
+                                                                                          func.path,
+                                                                                          func.memory)
+
         if call(update_function_cmd, shell=True) != 0:
             print("wsk was not able to create the action, install failed!!!")
             return self.INSTALL_FAILED
