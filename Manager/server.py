@@ -314,9 +314,9 @@ if __name__ == "__main__":
 
     if runtimes_ready() and is_mappings_db_ready():
 
-         if config.NODE_TYPE == "local-edge":
-            awareness = Awareness()
-            awareness.start()
+         # if config.NODE_TYPE == "local-edge":
+           # awareness = Awareness()
+           # awareness.start()
 
          allocation = Allocation()
          acquisition = Acquisition(allocation)
