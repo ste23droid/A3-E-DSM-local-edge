@@ -36,10 +36,10 @@ class Acquisition:
         if not self.__repo_blacklisted(func_repo):
             path_exists = os.path.exists("{}/{}/{}".format(config.REPOS_PATH, repo_owner, repo_name))
             if not path_exists:
-                print('Acquisition result: ', self.__clone_repo(repo_owner, func_repo))
+                #print('Acquisition result: ', self.__clone_repo(repo_owner, func_repo))
                 git_repo_has_changed = True
             else:
-                print(func_repo + ' already acquired, checking for updates')
+                #print(func_repo + ' already acquired, checking for updates')
                 git_repo_has_changed = self.__need_update_repo(repo_owner, repo_name, func_repo)
 
             # check config
@@ -94,13 +94,14 @@ class Acquisition:
     def __need_update_repo(self, repo_owner, repo_name, repo_url):
         #print('Check if we need to update repo {}'.format(repo_url))
 
-        result = check_output("cd {}/{}/{}; ".format(config.REPOS_PATH, repo_owner, repo_name) +
-                              "git pull origin master ", shell=True).splitlines()[0]
-        # b'Already up to date.' in python 3.6, or use the method .decode("utf-8")
-        if result.decode("utf-8") == 'Already up to date.':
-            #print(f'{repo_url} already up to date')
-            return False
-        return True
+        # result = check_output("cd {}/{}/{}; ".format(config.REPOS_PATH, repo_owner, repo_name) +
+        #                       "git pull origin master ", shell=True).splitlines()[0]
+        # # b'Already up to date.' in python 3.6, or use the method .decode("utf-8")
+        # if result.decode("utf-8") == 'Already up to date.':
+        #     #print(f'{repo_url} already up to date')
+        #     return False
+        # return True
+        return False
 
     def __parse_config__(self, repo_owner, repo_name, func_repo):
         #print('Checking for A3E config file in repo')
