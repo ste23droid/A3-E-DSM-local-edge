@@ -34,7 +34,7 @@ DB_METRICS_VIEW_NAME = "runtime_metrics"
 
 FLASK_PORT = 5050
 
-DEFAULT_RUNTIME_JSON = "{\"name\": \"ste23/whisk-python2action-alpine-opencv-numpy:prod\", \
+DEFAULT_RUNTIME_JSON = "{\"name\": \"ste23/whisk-python2action-alpine-opencv-numpy:prod-cache\", \
                            \"language\": \"python\",  \
                            \"languageVersion\": \"2.7\", \
                            \"dependencies\": [ \
