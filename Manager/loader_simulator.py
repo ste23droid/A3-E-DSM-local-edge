@@ -83,7 +83,7 @@ class LoaderSimulator:
                           headers=config.APPLICATION_JSON_HEADER)
             delta_seconds = time.time() - start_request
             print("Time to make load request sec {}".format(delta_seconds))
-            print(post_request.json())
+            #print(post_request.json())
 
 
             ## save the load request to metrics db
