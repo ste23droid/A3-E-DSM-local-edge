@@ -13,6 +13,11 @@ import config
 from subprocess import check_output
 from flask import Flask, request, Response
 from multiprocessing import Process
+import sys
+import subprocess
+import os
+
+create = [sys.executable, 'run_ws_server.py']
 
 app = Flask(__name__)
 awareness = None
@@ -353,13 +358,15 @@ if __name__ == "__main__":
          #loader_process = Process(target=start_loader_process)
          #loader_process.start()
 
+         os.system("python run_ws_server.py")
+
          # run Flask REST API
          if config.RUN_FLASK:
              app.run(host=config.PRIVATE_HOST_IP, port=config.FLASK_PORT, debug=False)
 
          t.sleep(config.DEFAULT_EXECUTION_TIME)
-         if awareness is not None:
-            awareness.stop()
+         #if awareness is not None:
+         #   awareness.stop()
 
          #websocketserver.stop()
     else:

@@ -13,7 +13,7 @@ class A3EWebsocketServerProtocol(WebSocketServerProtocol):
     def __init__(self):
         super().__init__()
         self.loop = asyncio.get_event_loop()
-        #self.wsthread = threading.Thread(target=self.__run_loop, args=(self.loop,))
+        self.wsthread = threading.Thread(target=self.__run_loop, args=(self.loop,))
         self.factory = WebSocketServerFactory(u"ws://{}:{}".format(config.PRIVATE_HOST_IP, config.WEBSOCKET_PORT))
         self.factory.protocol = A3EWebsocketServerProtocol
 
@@ -126,10 +126,10 @@ class A3EWebsocketServerProtocol(WebSocketServerProtocol):
     def start(self):
         print("Starting Websocket server...")
         # thread will die when the main thread dies
-        #self.wsthread.daemon = True
-        #self.wsthread.start()
-        self.__run_loop(self.loop)
+        self.wsthread.daemon = True
+        self.wsthread.start()
+        #self.__run_loop(self.loop)
 
     def stop(self):
         print("Stopping Websocket server...")
-        #self.wsthread.join()
+        self.wsthread.join()

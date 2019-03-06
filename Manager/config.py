@@ -49,8 +49,8 @@ CONFIG_FILE_NAME = "a3e_config.json"
 WHISK_NAMESPACE = "guest"
 WHISK_API_VERSION = "v1"
 # modify wsk path with the content returned by "which wsk" command
-WSK_PATH = "/home/ubuntu/git/incubator-openwhisk-devtools/docker-compose/openwhisk-src/bin/wsk"
-#WSK_PATH = "/Users/stefano/Desktop/incubator-openwhisk-devtools/docker-compose/openwhisk-src/bin/wsk"
+#WSK_PATH = "/home/ubuntu/git/incubator-openwhisk-devtools/docker-compose/openwhisk-src/bin/wsk"
+WSK_PATH = "/Users/stefano/Desktop/incubator-openwhisk-devtools/docker-compose/openwhisk-src/bin/wsk"
 
 REPOS_PATH = "./repositories"
 WEBSOCKET_PORT = "12323"
