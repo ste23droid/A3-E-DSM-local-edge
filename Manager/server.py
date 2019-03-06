@@ -298,6 +298,7 @@ if __name__ == "__main__":
 
     parsed, ignored = parser.parse_known_args()
 
+    # https://stackoverflow.com/a/4435179
     if parsed.private_host_ip is not None:
         config.PRIVATE_HOST_IP = parsed.private_host_ip
 
@@ -357,6 +358,12 @@ if __name__ == "__main__":
 
          #loader_process = Process(target=start_loader_process)
          #loader_process.start()
+
+
+
+         command_line_string = f"--private-host-ip={config.PRIVATE_HOST_IP} --public-host-ip={config.PUBLIC_HOST_IP} --wsk-path={config.WSK_PATH}"
+
+
 
          os.system("python run_ws_server.py")
 
