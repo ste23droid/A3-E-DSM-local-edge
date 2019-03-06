@@ -31,6 +31,7 @@ def start_ws_server():
     websocketserver = A3EWebsocketServerProtocol()
     websocketserver.start()
 
+
 def start_loader_process():
     loadsimulator = LoaderSimulator()
     loadsimulator.start()
@@ -359,8 +360,13 @@ if __name__ == "__main__":
          #loader_process = Process(target=start_loader_process)
          #loader_process.start()
 
+         start_ws_server()
+
+         # https://stackoverflow.com/questions/546017/how-do-i-run-another-script-in-python-without-waiting-for-it-to-finish
+         # https://stackoverflow.com/questions/1196074/how-to-start-a-background-process-in-python?noredirect=1&lq=1
          command_line_string = f"--private-host-ip={config.PRIVATE_HOST_IP}"
-         subprocess.call(f'python run_ws_server.py {command_line_string}', shell=True)
+         #https://docs.python.org/3/library/subprocess.html
+         subprocess.Popen(['python', 'run_ws_server.py', 'f{command_line_string}'], shell=True)
 
          # run Flask REST API
          if config.RUN_FLASK:
