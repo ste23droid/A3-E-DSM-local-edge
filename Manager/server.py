@@ -360,7 +360,7 @@ if __name__ == "__main__":
          #loader_process.start()
 
          command_line_string = f"--private-host-ip={config.PRIVATE_HOST_IP}"
-         subprocess.call(['python', f'run_ws_server.py {command_line_string}'])
+         subprocess.call(f'python run_ws_server.py {command_line_string}', shell=True)
 
          # run Flask REST API
          if config.RUN_FLASK:
