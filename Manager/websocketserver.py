@@ -30,7 +30,7 @@ class A3EWebsocketServerProtocol(WebSocketServerProtocol):
                                               "requestTime": t.time()}),
                              verify=False,
                              headers=config.APPLICATION_JSON_HEADER)
-        print("Post function exec metrics to db, response code: {}".format(post_db_request))
+        #print("Post function exec metrics to db, response code: {}".format(post_db_request))
 
     async def handleRequest(self, json_request, json_message):
         loop = asyncio.get_event_loop()
@@ -128,7 +128,6 @@ class A3EWebsocketServerProtocol(WebSocketServerProtocol):
         # thread will die when the main thread dies
         self.wsthread.daemon = True
         self.wsthread.start()
-        #self.__run_loop(self.loop)
 
     def stop(self):
         print("Stopping Websocket server...")

@@ -103,7 +103,7 @@ class Acquisition:
         return True
 
     def __parse_config__(self, repo_owner, repo_name, func_repo):
-        #print('Checking for A3E config file in repo')
+        # print('Checking for A3E config file in repo')
         # print os.path.dirname(os.path.abspath(__file__))
         repositories_directory = os.path.join(os.path.dirname(os.path.abspath(__file__)), "repositories")
         repo_directory = os.path.join(os.path.join(repositories_directory, repo_owner), repo_name)

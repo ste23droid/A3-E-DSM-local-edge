@@ -8,16 +8,11 @@ from awareness import Awareness
 from acquisition import Acquisition
 from allocation import Allocation
 from loader_simulator import LoaderSimulator
-from websocketserver import A3EWebsocketServerProtocol
 import config
 from subprocess import check_output
 from flask import Flask, request, Response
 from multiprocessing import Process
-import sys
 import subprocess
-import os
-
-create = [sys.executable, 'run_ws_server.py']
 
 app = Flask(__name__)
 awareness = None
@@ -27,14 +22,11 @@ loadsimulator = None
 requests.packages.urllib3.disable_warnings()
 start_loader = False
 
-def start_ws_server():
-    websocketserver = A3EWebsocketServerProtocol()
-    websocketserver.start()
-
 
 def start_loader_process():
     loadsimulator = LoaderSimulator()
     loadsimulator.start()
+
 
 @app.route('/')
 def entry():
@@ -173,6 +165,7 @@ def runtimes_ready():
     if get_runtimes_db.status_code == 200:
         body = get_runtimes_db.json()
         if body["doc_count"] >= 1:
+            # TODO: improve
             print("Runtimes found!")
             return True
         else:
@@ -228,9 +221,10 @@ def is_mappings_db_ready():
 
 if __name__ == "__main__":
 
-    # TODO: ADD LOOP ON DOMAIN MANAGER TO CHECK FOR UNUSED ACTIONS: after a timeout we need to uninstall them
-    # todo: prendere un path a un config file con la lista di repo whitelisted permesso sul dominio
-    # API REST CONFIG: add runtime, get runtimes, add whitelist (auth), get whitelist (auth)
+    # todo: improve CHECK FOR UNUSED ACTIONS: after a timeout we may uninstall them
+    # todo: take a path to config with repositories whitelisted on the domain
+    # todo: API REST CONFIG: add runtime, get runtimes, add whitelist (auth), get whitelist (auth)
+
     parser = argparse.ArgumentParser()
     parser.add_argument('--private-host-ip',
                         type=str,
@@ -277,11 +271,6 @@ if __name__ == "__main__":
                         default=config.WSK_PATH,
                         help='Path of the wsk command of the OpenWhisk installation to use')
 
-    parser.add_argument('--flask',
-                        type=bool,
-                        default=True,
-                        help='Whether to start Flask or not')
-
     parser.add_argument('--flask-port',
                         type=int,
                         default=config.FLASK_PORT,
@@ -327,9 +316,6 @@ if __name__ == "__main__":
     if parsed.wsk_path is not None:
         config.WSK_PATH = parsed.wsk_path
 
-    if parsed.flask is not None:
-        config.RUN_FLASK = parsed.flask
-
     if parsed.flask_port is not None:
         config.FLASK_PORT = parsed.flask_port
 
@@ -341,26 +327,12 @@ if __name__ == "__main__":
 
     if runtimes_ready() and is_mappings_db_ready():
 
-         # if config.NODE_TYPE == "local-edge":
-           # awareness = Awareness()
-           # awareness.start()
-
-         #loadsimulator = LoaderSimulator()
+         if config.NODE_TYPE == "local-edge":
+            awareness = Awareness()
+            awareness.start()
 
          allocation = Allocation()
          acquisition = Acquisition(allocation)
-
-         # run Websocket server
-         #websocketserver = A3EWebsocketServerProtocol()
-         #websocketserver.start()
-
-         #ws_process = Process(target=start_ws_server)
-         #ws_process.start()
-
-         #loader_process = Process(target=start_loader_process)
-         #loader_process.start()
-
-         start_ws_server()
 
          # https://stackoverflow.com/questions/546017/how-do-i-run-another-script-in-python-without-waiting-for-it-to-finish
          # https://stackoverflow.com/questions/1196074/how-to-start-a-background-process-in-python?noredirect=1&lq=1
@@ -369,15 +341,7 @@ if __name__ == "__main__":
          subprocess.Popen(f'python run_ws_server.py {command_line_string}', shell=True)
 
          # run Flask REST API
-         if config.RUN_FLASK:
-             app.run(host=config.PRIVATE_HOST_IP, port=config.FLASK_PORT, debug=False)
+         app.run(host=config.PRIVATE_HOST_IP, port=config.FLASK_PORT, debug=False)
 
-         #os.system(f"python run_ws_server.py {command_line_string}")
-
-         #t.sleep(config.DEFAULT_EXECUTION_TIME)
-         #if awareness is not None:
-         #   awareness.stop()
-
-         #websocketserver.stop()
     else:
         print("A3E Domain Manager not ready, aborting...")
