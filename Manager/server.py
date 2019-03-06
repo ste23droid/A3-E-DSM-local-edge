@@ -334,8 +334,8 @@ if __name__ == "__main__":
          acquisition = Acquisition(allocation)
 
          # run Websocket server
-         websocketserver = A3EWebsocketServerProtocol()
-         websocketserver.start()
+         #websocketserver = A3EWebsocketServerProtocol()
+         #websocketserver.start()
 
          # run Flask REST API
          if config.RUN_FLASK:
@@ -345,6 +345,6 @@ if __name__ == "__main__":
          if awareness is not None:
             awareness.stop()
 
-         websocketserver.stop()
+         #websocketserver.stop()
     else:
         print("A3E Domain Manager not ready, aborting...")
