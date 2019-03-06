@@ -99,7 +99,7 @@ class LoaderSimulator:
                                                              "requestTime": time.time()}),
                                             verify=False,
                                             headers=config.APPLICATION_JSON_HEADER)
-            print("Post loader exec metrics to db, response code: {}".format(post_db_request))
+            #print("Post loader exec metrics to db, response code: {}".format(post_db_request))
 
             # sleep before next iteration
             # if self.iterations < 200:
