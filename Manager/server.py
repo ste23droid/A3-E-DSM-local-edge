@@ -359,14 +359,14 @@ if __name__ == "__main__":
          #loader_process = Process(target=start_loader_process)
          #loader_process.start()
 
-
-
          command_line_string = f"--private-host-ip={config.PRIVATE_HOST_IP}"
-         os.system(f"python run_ws_server.py {command_line_string}")
+         subprocess.call(['python', f'run_ws_server.py {command_line_string}'])
 
          # run Flask REST API
          if config.RUN_FLASK:
              app.run(host=config.PRIVATE_HOST_IP, port=config.FLASK_PORT, debug=False)
+
+         #os.system(f"python run_ws_server.py {command_line_string}")
 
          #t.sleep(config.DEFAULT_EXECUTION_TIME)
          #if awareness is not None:
