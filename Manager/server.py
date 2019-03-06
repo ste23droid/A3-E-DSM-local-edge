@@ -12,6 +12,7 @@ from websocketserver import A3EWebsocketServerProtocol
 import config
 from subprocess import check_output
 from flask import Flask, request, Response
+from multiprocessing import Process
 
 app = Flask(__name__)
 awareness = None
@@ -20,6 +21,14 @@ acquisition = None
 loadsimulator = None
 requests.packages.urllib3.disable_warnings()
 start_loader = False
+
+def start_ws_server():
+    websocketserver = A3EWebsocketServerProtocol()
+    websocketserver.start()
+
+def start_loader_process():
+    loadsimulator = LoaderSimulator()
+    loadsimulator.start()
 
 @app.route('/')
 def entry():
@@ -38,8 +47,8 @@ def identification():
     global start_loader
     global loadsimulator
     if not start_loader:
+        process_start_load_simulator = Process(target=start_loader_process)
         start_loader = True
-        loadsimulator.start()
 
     # print(response_json)
     return Response(json.dumps(response_json), mimetype='application/json')
@@ -328,7 +337,7 @@ if __name__ == "__main__":
            # awareness = Awareness()
            # awareness.start()
 
-         loadsimulator = LoaderSimulator()
+         #loadsimulator = LoaderSimulator()
 
          allocation = Allocation()
          acquisition = Acquisition(allocation)
@@ -336,6 +345,12 @@ if __name__ == "__main__":
          # run Websocket server
          #websocketserver = A3EWebsocketServerProtocol()
          #websocketserver.start()
+
+         #ws_process = Process(target=start_ws_server)
+         #ws_process.start()
+
+         #loader_process = Process(target=start_loader_process)
+         #loader_process.start()
 
          # run Flask REST API
          if config.RUN_FLASK:

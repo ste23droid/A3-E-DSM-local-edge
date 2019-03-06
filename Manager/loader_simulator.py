@@ -13,25 +13,25 @@ import re
 class LoaderSimulator:
 
     def __init__(self):
-        self.loaderThread = threading.Thread(target=self.__loader)
+        #self.loaderThread = threading.Thread(target=self.__loader)
         self.iterations = 0
 
     def start(self):
         print("Start Loader")
         # thread will die when the main thread dies
-        self.loaderThread.daemon = True
-        self.loaderThread.start()
-
+        #self.loaderThread.daemon = True
+        #self.loaderThread.start()
+        self.__loader()
 
     def stop(self):
         print("Stop Loader")
-        self.loaderThread.do_run = False
-        self.loaderThread.join()
+        #self.loaderThread.do_run = False
+        #self.loaderThread.join()
 
 
     def __loader(self):
         print('Load Simulator starting load')
-        t = threading.currentThread()
+        #t = threading.currentThread()
 
 
         # TO CONFIGURE
@@ -72,8 +72,9 @@ class LoaderSimulator:
             }
 
 
-        while getattr(t, "do_run", True):
+        #while getattr(t, "do_run", True):
 
+        while True:
             ### make the load request
             json_string_payload = json.dumps(a3e_request)
             start_request = time.time()
