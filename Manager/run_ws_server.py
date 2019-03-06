@@ -1,14 +1,8 @@
 from websocketserver import A3EWebsocketServerProtocol
 import argparse
 import config
-
+import time
 #https://stackoverflow.com/a/40624023
-
-
-
-
-
-
 
 
 if __name__ == "__main__":
@@ -124,7 +118,7 @@ if __name__ == "__main__":
 
     websocketserver = A3EWebsocketServerProtocol()
     websocketserver.start()
-
+    time.sleep(86400)
 
 
 
