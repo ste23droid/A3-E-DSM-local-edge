@@ -102,16 +102,16 @@ class LoaderSimulator:
             print("Post loader exec metrics to db, response code: {}".format(post_db_request))
 
             # sleep before next iteration
-            if self.iterations < 200:
-                time.sleep(0.100)
-            elif self.iterations < 400:
-                time.sleep(0.200)
-            elif self.iterations < 600:
-                time.sleep(0.200)
-            elif self.iterations < 1000:
-                time.sleep(0.100)
-            else:
-                time.sleep(0.050)
+            # if self.iterations < 200:
+            #     time.sleep(0.100)
+            # elif self.iterations < 400:
+            #     time.sleep(0.200)
+            # elif self.iterations < 600:
+            #     time.sleep(0.200)
+            # elif self.iterations < 1000:
+            #     time.sleep(0.100)
+            # else:
+            #     time.sleep(0.050)
 
             self.iterations = self.iterations + 1
 
