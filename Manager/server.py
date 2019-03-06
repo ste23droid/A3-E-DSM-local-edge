@@ -361,17 +361,14 @@ if __name__ == "__main__":
 
 
 
-         command_line_string = f"--private-host-ip={config.PRIVATE_HOST_IP} --public-host-ip={config.PUBLIC_HOST_IP} --wsk-path={config.WSK_PATH}"
-
-
-
-         os.system("python run_ws_server.py")
+         command_line_string = f"--private-host-ip={config.PRIVATE_HOST_IP}"
+         os.system(f"python run_ws_server.py {command_line_string}")
 
          # run Flask REST API
          if config.RUN_FLASK:
              app.run(host=config.PRIVATE_HOST_IP, port=config.FLASK_PORT, debug=False)
 
-         t.sleep(config.DEFAULT_EXECUTION_TIME)
+         #t.sleep(config.DEFAULT_EXECUTION_TIME)
          #if awareness is not None:
          #   awareness.stop()
 
