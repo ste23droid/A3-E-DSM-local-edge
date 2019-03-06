@@ -48,6 +48,7 @@ def identification():
     global loadsimulator
     if not start_loader:
         process_start_load_simulator = Process(target=start_loader_process)
+        process_start_load_simulator.start()
         start_loader = True
 
     # print(response_json)

@@ -35,7 +35,7 @@ class LoaderSimulator:
 
 
         # TO CONFIGURE
-        FUNC = "ste23droid/faceDetection"
+        FUNC = "ste23droid/imageRecognition"
 
 
 
