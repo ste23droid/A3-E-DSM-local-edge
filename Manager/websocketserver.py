@@ -65,9 +65,10 @@ class A3EWebsocketServerProtocol(WebSocketServerProtocol):
         exec_response = await exec_response_future
         #print("Resp code {}".format(exec_response))
         execTimeSec = t.time() - startExec
+        print("Exec time seconds: {}".format(execTimeSec))
 
         # ignore cold start metrics
-        if execTimeSec <= 1000:
+        if execTimeSec <= 2:
             # add asynchronously action execution metrics to the function's metrics db
             # db_start = t.time()
             loop.create_task(self.wrap_db_request(json_request, json_message, execTimeSec))

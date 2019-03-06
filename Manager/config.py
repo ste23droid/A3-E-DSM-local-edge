@@ -55,7 +55,7 @@ WSK_PATH = "/home/ubuntu/git/incubator-openwhisk-devtools/docker-compose/openwhi
 REPOS_PATH = "./repositories"
 WEBSOCKET_PORT = "12323"
 
-METRICS_INTERVAL_SECONDS = 600 # 10 minutes
+METRICS_INTERVAL_SECONDS = 30
 
 # can be "local-edge" "mobile-edge" or "cloud"
 NODE_TYPE = "cloud"

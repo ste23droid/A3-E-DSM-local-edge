@@ -7,6 +7,7 @@ import re
 from awareness import Awareness
 from acquisition import Acquisition
 from allocation import Allocation
+from loader_simulator import LoaderSimulator
 from websocketserver import A3EWebsocketServerProtocol
 import config
 from subprocess import check_output
@@ -16,8 +17,9 @@ app = Flask(__name__)
 awareness = None
 allocation = None
 acquisition = None
+loadsimulator = None
 requests.packages.urllib3.disable_warnings()
-
+start_loader = False
 
 @app.route('/')
 def entry():
@@ -31,6 +33,14 @@ def identification():
     # print("Received Identification Request from ip: " + client_ip)
     # print("Received Identification json: " + str(content))
     response_json = acquisition.__parse_request__(content)
+
+    # START LOADER TO TEST THE DOMAIN
+    global start_loader
+    global loadsimulator
+    if not start_loader:
+        start_loader = True
+        loadsimulator.start()
+
     # print(response_json)
     return Response(json.dumps(response_json), mimetype='application/json')
 
@@ -317,6 +327,8 @@ if __name__ == "__main__":
          # if config.NODE_TYPE == "local-edge":
            # awareness = Awareness()
            # awareness.start()
+
+         loadsimulator = LoaderSimulator()
 
          allocation = Allocation()
          acquisition = Acquisition(allocation)
