@@ -75,8 +75,8 @@ class LoaderSimulator:
         while getattr(t, "do_run", True):
 
             ### make the load request
-            start_request = time.time()
             json_string_payload = json.dumps(a3e_request)
+            start_request = time.time()
             post_request = requests.post("http://{}:8888/api/v1/web/guest/{}?blocking=true&result=true".format(config.PRIVATE_HOST_IP, FUNC),
                           data=json_string_payload,
                           verify=False,
