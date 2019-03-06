@@ -366,7 +366,7 @@ if __name__ == "__main__":
          # https://stackoverflow.com/questions/1196074/how-to-start-a-background-process-in-python?noredirect=1&lq=1
          command_line_string = f"--private-host-ip={config.PRIVATE_HOST_IP}"
          #https://docs.python.org/3/library/subprocess.html
-         subprocess.Popen(['python', 'run_ws_server.py'], shell=True)
+         subprocess.Popen(f'python run_ws_server.py {command_line_string}', shell=True)
 
          # run Flask REST API
          if config.RUN_FLASK:
