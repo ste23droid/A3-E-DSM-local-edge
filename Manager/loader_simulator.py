@@ -13,6 +13,7 @@ class LoaderSimulator:
 
     def __init__(self):
         self.iterations = 0
+        self.start_time = time.time()
 
     def start(self):
         print("Start Loader")
@@ -88,13 +89,21 @@ class LoaderSimulator:
             #print("Post loader exec metrics to db, response code: {}".format(post_db_request))
 
             #sleep before next iteration
-            if self.iterations < 200:
+            deltaSec = time.time() - self.start_time
+
+            # VERY LIGHT: 5 sec
+            # LIGHT: 3 sec
+            # MED: 1 sec
+            # HIGH 0.7 sec
+            # VERY HIGH 0.4
+
+            if deltaSec < 480:
                 time.sleep(2)
-            elif self.iterations < 400:
+            elif deltaSec < 480*2:
                 time.sleep(1)
-            elif self.iterations < 600:
+            elif deltaSec < 480*3:
                 time.sleep(1.5)
-            elif self.iterations < 1000:
+            elif deltaSec < 480*4:
                 time.sleep(0.7)
             else:
                 time.sleep(3.5)
