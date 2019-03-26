@@ -91,7 +91,7 @@ class LoaderSimulator:
             #sleep before next iteration
             deltaSec = time.time() - self.start_time
 
-            # VERY LIGHT: 5 sec
+            # VERY LIGHT5 sec
             # LIGHT: 3 sec
             # MED: 1 sec
             # HIGH 0.7 sec
