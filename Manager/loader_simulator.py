@@ -98,15 +98,15 @@ class LoaderSimulator:
             # VERY HIGH 0.4
 
             if deltaSec < 480:
-                time.sleep(2)
+                time.sleep(1)
             elif deltaSec < 480*2:
                 time.sleep(1)
             elif deltaSec < 480*3:
-                time.sleep(1.5)
+                time.sleep(1)
             elif deltaSec < 480*4:
-                time.sleep(0.7)
+                time.sleep(1)
             else:
-                time.sleep(3.5)
+                time.sleep(1)
 
             self.iterations = self.iterations + 1
 
