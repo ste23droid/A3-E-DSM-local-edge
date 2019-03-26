@@ -65,7 +65,7 @@ class A3EWebsocketServerProtocol(WebSocketServerProtocol):
         exec_response = await exec_response_future
         #print("Resp code {}".format(exec_response))
         execTimeSec = t.time() - startExec
-        print("Exec time seconds: {}".format(execTimeSec))
+        #print("Exec time seconds: {}".format(execTimeSec))
 
         # ignore cold start metrics
         if execTimeSec <= 2:
@@ -83,7 +83,7 @@ class A3EWebsocketServerProtocol(WebSocketServerProtocol):
         return json.dumps(response_json).encode('utf-8')
 
     async def onMessage(self, payload, isBinary):
-        print("Websocket received a message")
+        #print("Websocket received a message")
         json_message = payload.decode('utf-8')
         request_json = json.loads(json_message)
         # print("Func received: {}".format(request_json["function"]))
