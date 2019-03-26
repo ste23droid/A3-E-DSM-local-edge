@@ -33,6 +33,11 @@ def entry():
     return 'A3E Domain Manager!'
 
 
+@app.route('/test', methods=['POST'])
+def test():
+    return Response('{\"hello\":\"ciao\"}', mimetype='application/json')
+
+
 @app.route('/identification', methods=['POST'])
 def identification():
     content = request.json
