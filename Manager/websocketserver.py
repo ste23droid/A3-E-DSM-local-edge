@@ -20,16 +20,16 @@ class A3EWebsocketServerProtocol(WebSocketServerProtocol):
         self.overheadCumulativeSec = 0.0
 
     async def wrap_db_request(self, request_json, message_json, delta_time_sec):
-        function_name = request_json["function"]
-        func_name_for_db = re.sub("/", "-", function_name).lower()
-        requests.post("{}/{}-{}".format(config.COUCH_DB_BASE,
-                                               config.DB_METRICS_NAME,
-                                               func_name_for_db),
-                             data=json.dumps({"execTimeSec": delta_time_sec,
-                                              "payloadBytes": len(message_json),
-                                              "requestTime": t.time()}),
-                             verify=False,
-                             headers=config.APPLICATION_JSON_HEADER)
+        function_name = "function"
+        #func_name_for_db = re.sub("/", "-", function_name).lower()
+        #requests.post("{}/{}-{}".format(config.COUCH_DB_BASE,
+        #                                       config.DB_METRICS_NAME,
+        #                                       func_name_for_db),
+        #                     data=json.dumps({"execTimeSec": delta_time_sec,
+        #                                      "payloadBytes": len(message_json),
+        #                                      "requestTime": t.time()}),
+        #                     verify=False,
+        #                     headers=config.APPLICATION_JSON_HEADER)
 
     async def handleRequest(self, json_request, json_message):
         startRequest = t.time()
@@ -37,7 +37,7 @@ class A3EWebsocketServerProtocol(WebSocketServerProtocol):
 
         def wrap_exec_request(request_json, message_json):
             return requests.post("http://{}:5050/test"
-                                 .format(config.PUBLIC_HOST_IP),
+                                 .format(config.PRIVATE_HOST_IP),
                                  data=message_json,
                                  verify=False,
                                  headers=config.APPLICATION_JSON_HEADER)

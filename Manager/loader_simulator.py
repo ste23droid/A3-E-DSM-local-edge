@@ -23,7 +23,7 @@ class LoaderSimulator:
         print('Load Simulator starting load')
 
         # TO CONFIGURE
-        FUNC = "ste23droid/imageRecognition"
+        FUNC = "ste23droid/neuralTransfer"
         # TO CONFIGURE
 
         test_images_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "testing")
